@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSV Formatter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        margin-bottom: 20px;
+      }
+      button {
+        padding: 10px 15px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #218838;
+      }
+      pre {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border: 1px solid #ccc;
+        white-space: pre-wrap; /* Preserve whitespace */
+      }
+    </style>
+  </head>
+  <body>
+    <h1>CSV Formatter</h1>
+    <p>Paste your CSV content below:</p>
+
+    <textarea id="csvInput" placeholder="Paste CSV content here..."></textarea>
+    <br />
+    <button onclick="processCSV()">Process CSV</button>
+
+    <h2>Formatted Output:</h2>
+    <pre id="output"></pre>
+
+    <script>
+      function parseCSV(csv) {
+    const lines = csv.trim().split('\n');
+    const result = {};
+    let section = '';
+    let clicksData = [];
+
+    lines.forEach((line, index) => {
+        // Split the line by colon (:) for key-value pairs
+        const [key, ...values] = line.split(':');
+        const value = values.join(':').trim(); // Rejoin the remaining parts after colon (in case there are multiple colons)
+
+        if (key.trim() === 'Overall Stats') {
+            section = 'stats';
+        } else if (key.trim() === 'Clicks by URL') {
+            section = 'clicks';
+        } else if (section === 'clicks' && value) {
+            // Handle the Clicks by URL section (splitting URL, total clicks, and unique clicks)
+            const [url, totalClicks, uniqueClicks] = line.split(/\s+/); // Use regex to handle spaces
+            if (url && totalClicks && uniqueClicks) {
+                clicksData.push({ url: url.trim(), uniqueClicks: uniqueClicks.trim() });
+            }
+        } else if (section === 'stats') {
+            // Handle the Overall Stats section
+            if (key.trim() && value) {
+                result[key.trim()] = value;
+            }
+        } else if (key.trim() && value) {
+            // Handle general key-value pairs (before the "Overall Stats" section)
+            result[key.trim()] = value;
+        }
+    });
+
+    console.log(result);  // Debugging output
+    console.log(clicksData);  // Debugging output
+
+    return { result, clicksData };
+}
+
+function formatData(parsedData) {
+    const { result, clicksData } = parsedData;
+
+    const formatted = `
+Email Campaign Report\tBenvenuto Monza
+Database\tMonza All
+Subject Line:\t${result['Subject Line']}
+Delivery Date/Time:\t${result['Delivery Date/Time']}
+    
+Overall Stats    
+Total Recipients:\t${result['Total Recipients']}
+Recipients Who Opened:\t${result['Recipients Who Opened']}
+Total Opens:\t${result['Total Opens']}
+Recipients Who Clicked:\t${result['Recipients Who Clicked']}
+Total Clicks:\t${result['Total Clicks']}
+Total Unsubs:\t${result['Total Unsubs']}
+    
+Clicks by URL    
+URL\tUnique Clicks
+${clicksData.map(({ url, uniqueClicks }) => `${url}\t${uniqueClicks}`).join('\n')}
+            `;
+
+    return formatted.trim();
+}
+
+function processCSV() {
+    const csvInput = document.getElementById('csvInput').value;
+    const parsedData = parseCSV(csvInput);
+    const formattedOutput = formatData(parsedData);
+
+    // Display the formatted result in the pre element
+    document.getElementById('output').textContent = formattedOutput;
+}
+
+    </script>
+  </body>
+</html>
