@@ -2,9 +2,11 @@ document.getElementById('modifyBtn').addEventListener('click', function() {
     // Get the input HTML
     let html = document.getElementById('inputHtml').value;
 
-    // Get the user-defined image base URL and description
+    // Get the user-defined image base URL, description, campaign medium, and campaign name
     const imageUrl = document.getElementById('imageUrl').value;
     const description = document.getElementById('description').value.trim();
+    const campaignMedium = document.getElementById('campaignMedium').value.trim();
+    const campaignName = document.getElementById('campaignName').value.trim();
 
     // 1. Remove height attribute from <table>
     html = html.replace(/(<table[^>]*) height="[^"]*"/g, '$1');
@@ -75,6 +77,17 @@ document.getElementById('modifyBtn').addEventListener('click', function() {
     // Clean up duplicate styles in <td>
     html = html.replace(/style="([^"]*?)(font-size: 0px; padding: 0px; )(.*?)(font-size: 0px; padding: 0px; )([^"]*?)"/g, 'style="$1$3$5"');
     html = html.replace(/style="([^"]*?)(font-size: 0px; padding: 0px; )([^"]*)"/g, 'style="$1$3"');
+
+    // 8. Add UTM parameters to all links in the HTML
+    if (campaignMedium && campaignName) {
+        html = html.replace(/<a([^>]*)href="([^"]*)"/g, (match, p1, href) => {
+            // Add UTM parameters to the URL
+            const url = new URL(href, window.location.href);
+            url.searchParams.set('utm_medium', campaignMedium);
+            url.searchParams.set('utm_campaign', campaignName);
+            return `<a${p1}href="${url.toString()}"`;
+        });
+    }
 
     // Set the modified HTML in the output textarea
     document.getElementById('outputHtml').value = html;
