@@ -1,40 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML Modifier</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Email HTML Modifier</title>
     <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <h1>HTML Attribute Modifier</h1>
-    <a href="email-stats.html">Stats formatter</a>
+  </head>
+  <body>
+    <h1>Email HTML Modifier</h1>
+    <p><a href="email-stats.html">View Stats Formatter</a></p>
 
-    <textarea id="inputHtml" placeholder="Paste your HTML here" rows="10" cols="50"></textarea>
-
-    <div>
-        <label for="imageUrl">Image Base URL:</label>
-        <input type="text" id="imageUrl" placeholder="https://example.com/">
-    </div>
-    <div>
-        <label for="description">Description/Preview Text:</label>
-        <textarea id="description" placeholder="Enter description"></textarea>
-    </div>
+    <label for="inputHtml">Input HTML:</label>
+    <textarea
+      id="inputHtml"
+      placeholder="Paste your HTML here"
+      rows="10"
+    ></textarea>
 
     <div>
-        <label for="campaignMedium">Campaign Medium:</label>
-        <input type="text" id="campaignMedium" placeholder="e.g., email, social, etc.">
+      <label for="imageUrl">Image Base URL:</label>
+      <input
+        type="text"
+        id="imageUrl"
+        placeholder="https://example.com/images/"
+      />
     </div>
+
     <div>
-        <label for="campaignName">Campaign Name:</label>
-        <input type="text" id="campaignName" placeholder="e.g., summer_sale">
+      <label for="description">Description/Preview Text:</label>
+      <textarea
+        id="description"
+        placeholder="Enter description text..."
+        rows="2"
+      ></textarea>
+    </div>
+
+    <div>
+      <label for="campaignMedium">Campaign Medium (utm_medium):</label>
+      <input
+        type="text"
+        id="campaignMedium"
+        placeholder="e.g., email, banner"
+      />
+    </div>
+
+    <div>
+      <label for="campaignName">Campaign Name (utm_campaign):</label>
+      <input type="text" id="campaignName" placeholder="e.g., spring_launch" />
+    </div>
+
+    <div>
+      <label>
+        <input type="checkbox" id="responsiveToggle" />
+        Make Responsive
+      </label>
     </div>
 
     <button id="modifyBtn">Modify HTML</button>
 
-    <h2>Modified HTML</h2>
-    <textarea id="outputHtml" rows="10" cols="50" readonly></textarea>
+    <h2>Modified Output</h2>
+    <textarea id="outputHtml" rows="15" readonly></textarea>
 
     <script src="app.js"></script>
-</body>
+  </body>
 </html>
