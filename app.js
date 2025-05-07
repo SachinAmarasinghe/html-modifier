@@ -1,23 +1,17 @@
 document.getElementById("modifyBtn").addEventListener("click", function () {
-  // Get the input HTML
   let html = document.getElementById("inputHtml").value;
-
-  // Get the user-defined image base URL, description, campaign medium, and campaign name
   const imageUrl = document.getElementById("imageUrl").value;
   const description = document.getElementById("description").value.trim();
   const campaignMedium = document.getElementById("campaignMedium").value.trim();
   const campaignName = document.getElementById("campaignName").value.trim();
   const isResponsive = document.getElementById("responsiveToggle").checked;
 
-  // 1. Remove height attribute from <table>
   html = html.replace(/(<table[^>]*) height="[^"]*"/g, "$1");
-
-  // 2. Add role="presentation", align="center", width="700", border="0", cellpadding="0", cellspacing="0" to all <table>
 
   if (isResponsive) {
     html = html.replace(
       /<table(.*?)>/g,
-      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0"$1 style="max-width: 1400px;">'
+      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0"$1 style="max-width: 900px;">'
     );
   } else {
     html = html.replace(
@@ -26,62 +20,49 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
     );
   }
 
-  // 3. Add style="font-size: 0px; padding: 0px;" to <td> elements
   html = html.replace(
     /<td(?![^>]*style)/g,
     '<td style="font-size: 0px; padding: 0px;"'
   );
-  html = html.replace(/<td([^>]*)style="([^"]*)"/g, (match, p1, p2) => {
-    return `<td${p1} style="font-size: 0px; padding: 0px; ${p2}"`;
-  });
+  html = html.replace(
+    /<td([^>]*)style="([^"]*)"/g,
+    (match, p1, p2) => `<td${p1} style="font-size: 0px; padding: 0px; ${p2}"`
+  );
 
-  // 4. Remove colspan attributes from <td>
   html = html.replace(/<td[^>]*colspan="[^"]*"[^>]*>/g, "<td>");
 
-  // 5. Add or merge styles to <img> elements
   html = html.replace(/<img([^>]*)src="([^"]*)"/g, (match, p1, src) => {
-    let newSrc = imageUrl ? `${imageUrl}${src}` : src; // Prepend the base URL, keep the rest of the src intact
+    let newSrc = imageUrl ? `${imageUrl}${src}` : src;
     let styleMatch = /style="([^"]*)"/.exec(p1);
-    let newStyle = "display:block;line-height:0;font-size:0;height:auto; width: 100%;";
-
+    let newStyle =
+      "display:block;line-height:0;font-size:0;height:auto; width: 100%;";
     if (styleMatch) {
-      newStyle = `${newStyle} ${styleMatch[1]}`; // Merge styles if 'style' already exists
+      newStyle += " " + styleMatch[1];
       return `<img${p1.replace(
         styleMatch[0],
         ""
-      )} style="${newStyle}" src="${newSrc}"`; // Replace existing style
+      )} style="${newStyle}" src="${newSrc}"`;
     } else {
-      return `<img${p1} style="${newStyle}" src="${newSrc}"`; // Add style if not present
+      return `<img${p1} style="${newStyle}" src="${newSrc}"`;
     }
   });
 
   if (isResponsive) {
-    html = html.replace(
-      /<img([^>]*)width="[^"]*"/g,
-      '<img$1 width="100%"'
-    );
-    html = html.replace(
-      /<img([^>]*)height="[^"]*"/g,
-      '<img$1 height="auto"'
-    );
+    html = html.replace(/<img([^>]*)width="[^"]*"/g, '<img$1 width="100%"');
+    html = html.replace(/<img([^>]*)height="[^"]*"/g, '<img$1 height="auto"');
   }
 
-  // 6. Insert the description as the first row in the table
   if (description) {
-    const descriptionRow = `<tr><td style="font-size: 1px; color: #fff; padding: 0px;">${description}</td></tr>`;
-    html = html.replace(/(<table[^>]*>)/, `$1${descriptionRow}`);
+    const descRow = `<tr><td style="font-size: 1px; color: #fff; padding: 0px;">${description}</td></tr>`;
+    html = html.replace(/(<table[^>]*>)/, `$1${descRow}`);
   }
 
-  // 7. Handle multi-column rows (two or more <td> elements in a <tr> but NOT colspan)
-  const tableParser = document.createElement("div");
-  tableParser.innerHTML = html;
-
-  tableParser.querySelectorAll("table").forEach((table) => {
+  const parser = document.createElement("div");
+  parser.innerHTML = html;
+  parser.querySelectorAll("table").forEach((table) => {
     const rows = table.querySelectorAll("tr");
     rows.forEach((row) => {
       const columns = row.querySelectorAll("td");
-
-      // If the row has two or more columns and doesn't use colspan, move it to a separate inner table
       if (
         columns.length > 1 &&
         !Array.from(columns).some((td) => td.hasAttribute("colspan"))
@@ -91,27 +72,21 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("align", "center");
         if (isResponsive) {
           newTable.setAttribute("width", "100%");
-          newTable.setAttribute("style", "max-width: 1400px;");
-        }else {
+          newTable.setAttribute("style", "max-width: 900px;");
+        } else {
           newTable.setAttribute("width", "700");
         }
         newTable.setAttribute("border", "0");
         newTable.setAttribute("cellpadding", "0");
         newTable.setAttribute("cellspacing", "0");
-
-        newTable.appendChild(row.cloneNode(true)); // Move the multi-column row into the new table
-
-        // Clear the row in the original table and insert the new table
+        newTable.appendChild(row.cloneNode(true));
         row.innerHTML = `<td style="font-size: 0px; padding: 0px;"></td>`;
         row.querySelector("td").appendChild(newTable);
       }
     });
   });
 
-  // Update the modified HTML back to string format
-  html = tableParser.innerHTML;
-
-  // Clean up duplicate styles in <td>
+  html = parser.innerHTML;
   html = html.replace(
     /style="([^"]*?)(font-size: 0px; padding: 0px; )(.*?)(font-size: 0px; padding: 0px; )([^"]*?)"/g,
     'style="$1$3$5"'
@@ -121,10 +96,8 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
     'style="$1$3"'
   );
 
-  // 8. Add UTM parameters to all links in the HTML
   if (campaignMedium && campaignName) {
     html = html.replace(/<a([^>]*)href="([^"]*)"/g, (match, p1, href) => {
-      // Add UTM parameters to the URL
       const url = new URL(href, window.location.href);
       url.searchParams.set("utm_medium", campaignMedium);
       url.searchParams.set("utm_campaign", campaignName);
@@ -132,6 +105,45 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
     });
   }
 
-  // Set the modified HTML in the output textarea
+  // Update both output areas
+  // Update both output areas
   document.getElementById("outputHtml").value = html;
+  const display = document.getElementById("outputHtmlDisplay");
+  display.textContent = html;
+  Prism.highlightElement(display);
+
+  // ✅ Show live preview
+  const previewFrame = document.getElementById("previewFrame");
+  previewFrame.srcdoc = html;
+});
+
+document.getElementById("copyBtn").addEventListener("click", () => {
+  const htmlContent = document.getElementById("outputHtml").value;
+  navigator.clipboard
+    .writeText(htmlContent)
+    .then(() => alert("HTML copied to clipboard!"))
+    .catch(() => alert("Failed to copy."));
+});
+
+// Tab toggle logic
+document.getElementById("tabCode").addEventListener("click", () => {
+  document.getElementById("codeView").classList.remove("hidden");
+  document.getElementById("previewView").classList.add("hidden");
+  document
+    .getElementById("tabCode")
+    .classList.add("text-accent", "border-accent");
+  document
+    .getElementById("tabPreview")
+    .classList.remove("text-accent", "border-accent");
+});
+
+document.getElementById("tabPreview").addEventListener("click", () => {
+  document.getElementById("codeView").classList.add("hidden");
+  document.getElementById("previewView").classList.remove("hidden");
+  document
+    .getElementById("tabPreview")
+    .classList.add("text-accent", "border-accent");
+  document
+    .getElementById("tabCode")
+    .classList.remove("text-accent", "border-accent");
 });

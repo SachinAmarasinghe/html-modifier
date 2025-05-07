@@ -4,62 +4,275 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Email HTML Modifier</title>
-    <link rel="stylesheet" href="style.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          fontFamily: {
+            sans: ["system-ui", "sans-serif"],
+            heading: ['"Means Web"', "Georgia", "serif"],
+          },
+          extend: {
+            colors: {
+              primary: "#FFE01B",
+              background: "#F6F6F4",
+              surface: "#FFFFFF",
+              accent: "#241C15",
+              graymail: {
+                light: "#EAEAEB",
+                DEFAULT: "#8C8C8C",
+                dark: "#403F3E",
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- Fonts -->
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Georgia&display=swap");
+
+      @font-face {
+        font-family: "Means Web";
+        src: local("Means Web"), local("MeansWeb");
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: "Means Web", Georgia, serif;
+      }
+
+      code[class*="language-"] {
+        white-space: pre-wrap !important;
+        word-break: break-word;
+        word-wrap: break-word;
+      }
+
+      @keyframes fade-in {
+        0% {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-fade-in {
+        animation: fade-in 0.6s ease-out forwards;
+      }
+    </style>
+
+    <!-- Prism.js for syntax highlighting -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
   </head>
   <body>
-    <h1>Email HTML Modifier</h1>
-    <p><a href="email-stats.html">View Stats Formatter</a></p>
+    <!-- Header -->
+    <header class="bg-graymail-light">
+      <div
+        class="max-w-7xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-10 items-center"
+      >
+        <!-- Text content -->
+        <div class="space-y-5 text-center md:text-left">
+          <h1 class="text-5xl font-bold text-accent font-heading leading-tight">
+            Email HTML Modifier
+          </h1>
+          <p
+            class="text-graymail-dark text-lg max-w-xl mx-auto md:mx-0 leading-relaxed"
+          >
+            Clean, format, and enhance raw HTML for email campaigns. Set image
+            paths, add UTM tracking, inject preview text, and optionally make
+            your layout responsive.
+          </p>
+        </div>
 
-    <label for="inputHtml">Input HTML:</label>
-    <textarea
-      id="inputHtml"
-      placeholder="Paste your HTML here"
-      rows="10"
-    ></textarea>
+        <!-- Hero image -->
+        <div class="flex justify-center md:justify-end">
+          <img
+            src="hero.png"
+            alt="Email Editor Illustration"
+            class=" max-h-50 w-full"
+          />
+        </div>
+      </div>
+    </header>
 
-    <div>
-      <label for="imageUrl">Image Base URL:</label>
-      <input
-        type="text"
-        id="imageUrl"
-        placeholder="https://example.com/images/"
-      />
+    <!-- content  -->
+    <div
+      class="bg-background text-accent min-h-screen flex items-start justify-center py-7 px-4"
+    >
+      <div class="w-full max-w-5xl animate-fade-in">
+        <div
+          class="w-full max-w-5xl bg-surface rounded-2xl border border-graymail-light shadow p-10 space-y-10 animate-fade-in"
+        >
+          <!-- form and output go here -->
+
+          <!-- Form Fields -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="md:col-span-2">
+              <label
+                for="inputHtml"
+                class="block text-sm font-semibold text-accent mb-1"
+              >
+                Original HTML Code
+              </label>
+              <textarea
+                id="inputHtml"
+                rows="8"
+                placeholder="Paste your raw email HTML here..."
+                class="w-full border border-graymail-light rounded-xl p-4 font-mono text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary resize-y transition"
+              ></textarea>
+            </div>
+
+            <div>
+              <label
+                for="imageUrl"
+                class="block text-sm font-semibold text-accent mb-1"
+              >
+                Base Image URL (required)
+              </label>
+              <input
+                id="imageUrl"
+                type="text"
+                required
+                placeholder="e.g. https://example.com/images/"
+                class="w-full border border-graymail-light rounded-xl p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
+              />
+            </div>
+
+            <div>
+              <label
+                for="description"
+                class="block text-sm font-semibold text-accent mb-1"
+              >
+                Preview Text (appears in inbox)
+              </label>
+              <textarea
+                id="description"
+                rows="2"
+                placeholder="e.g. Limited-time offer on our new spring release..."
+                class="w-full border border-graymail-light rounded-xl p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
+              ></textarea>
+            </div>
+
+            <div>
+              <label
+                for="campaignMedium"
+                class="block text-sm font-semibold text-accent mb-1"
+              >
+                UTM Medium (utm_medium)
+              </label>
+              <input
+                id="campaignMedium"
+                type="text"
+                placeholder="e.g. email, newsletter"
+                class="w-full border border-graymail-light rounded-xl p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
+              />
+            </div>
+
+            <div>
+              <label
+                for="campaignName"
+                class="block text-sm font-semibold text-accent mb-1"
+              >
+                UTM Campaign Name (utm_campaign)
+              </label>
+              <input
+                id="campaignName"
+                type="text"
+                placeholder="e.g. spring_launch_2025"
+                class="w-full border border-graymail-light rounded-xl p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
+              />
+            </div>
+
+            <div class="md:col-span-2 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="responsiveToggle"
+                class="accent-primary h-5 w-5 rounded focus:ring-primary focus:ring-2"
+              />
+              <label
+                for="responsiveToggle"
+                class="text-sm font-medium text-accent"
+              >
+                Convert layout to be mobile responsive
+              </label>
+            </div>
+          </div>
+
+          <!-- Modify Button -->
+          <div class="text-center">
+            <button
+              id="modifyBtn"
+              class="px-6 py-3 bg-primary text-accent font-semibold rounded-xl border border-accent shadow-sm hover:bg-accent hover:text-white transition"
+            >
+              🧹 Generate Clean HTML
+            </button>
+          </div>
+
+          <!-- Output Section -->
+          <div>
+            <h2 class="text-2xl font-bold text-accent mb-4 font-heading">
+              Modified HTML Output
+            </h2>
+
+            <div class="mb-4 flex gap-4 border-b border-graymail-light">
+              <button
+                id="tabCode"
+                class="py-2 px-4 text-sm font-semibold text-accent border-b-2 border-accent"
+              >
+                📄 Code
+              </button>
+              <button
+                id="tabPreview"
+                class="py-2 px-4 text-sm font-semibold text-graymail hover:text-accent"
+              >
+                👁️ Preview
+              </button>
+            </div>
+
+            <div id="codeView" class="relative">
+              <button
+                id="copyBtn"
+                class="absolute top-0 right-0 mt-2 mr-2 text-sm bg-primary text-accent px-4 py-2 rounded-md border border-accent hover:bg-accent hover:text-white transition z-10"
+              >
+                📋 Copy Code
+              </button>
+              <pre
+                class="bg-gray-900 rounded-xl overflow-auto p-4 text-sm shadow-inner text-gray-100 whitespace-pre-wrap break-words font-mono max-h-96"
+              >
+<code id="outputHtmlDisplay" class="language-markup"></code>
+    </pre>
+            </div>
+
+            <div
+              id="previewView"
+              class="hidden border border-graymail-light rounded-xl overflow-hidden bg-white shadow-inner"
+            >
+              <iframe
+                id="previewFrame"
+                class="w-full h-96"
+                sandbox="allow-same-origin allow-scripts"
+              ></iframe>
+            </div>
+
+            <textarea id="outputHtml" class="hidden"></textarea>
+          </div>
+        </div>
+      </div>
     </div>
-
-    <div>
-      <label for="description">Description/Preview Text:</label>
-      <textarea
-        id="description"
-        placeholder="Enter description text..."
-        rows="2"
-      ></textarea>
-    </div>
-
-    <div>
-      <label for="campaignMedium">Campaign Medium (utm_medium):</label>
-      <input
-        type="text"
-        id="campaignMedium"
-        placeholder="e.g., email, banner"
-      />
-    </div>
-
-    <div>
-      <label for="campaignName">Campaign Name (utm_campaign):</label>
-      <input type="text" id="campaignName" placeholder="e.g., spring_launch" />
-    </div>
-
-    <div>
-      <label>
-        <input type="checkbox" id="responsiveToggle" />
-        Make Responsive
-      </label>
-    </div>
-
-    <button id="modifyBtn">Modify HTML</button>
-
-    <h2>Modified Output</h2>
-    <textarea id="outputHtml" rows="15" readonly></textarea>
 
     <script src="app.js"></script>
   </body>
