@@ -131,10 +131,16 @@ document.getElementById("tabCode").addEventListener("click", () => {
   document.getElementById("previewView").classList.add("hidden");
   document
     .getElementById("tabCode")
-    .classList.add("text-accent", "border-accent");
+    .classList.add("text-accent", "border-accent", "border-b-2");
+  document
+    .getElementById("tabCode")
+    .classList.remove("text-graymail");
   document
     .getElementById("tabPreview")
-    .classList.remove("text-accent", "border-accent");
+    .classList.remove("text-accent", "border-accent", "border-b-2");
+    document
+    .getElementById("tabPreview")
+    .classList.add("text-graymail");
 });
 
 document.getElementById("tabPreview").addEventListener("click", () => {
@@ -142,8 +148,15 @@ document.getElementById("tabPreview").addEventListener("click", () => {
   document.getElementById("previewView").classList.remove("hidden");
   document
     .getElementById("tabPreview")
-    .classList.add("text-accent", "border-accent");
+    .classList.add("text-accent", "border-accent", "border-b-2", "text-accent");
+  document.getElementById("tabPreview").classList.remove("text-graymail");
   document
     .getElementById("tabCode")
-    .classList.remove("text-accent", "border-accent");
+    .classList.remove(
+      "text-accent",
+      "border-accent",
+      "border-b-2",
+      "text-accent"
+    );
+  document.getElementById("tabCode").classList.add("text-graymail");
 });
