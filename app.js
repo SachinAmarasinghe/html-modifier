@@ -11,12 +11,12 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   if (isResponsive) {
     html = html.replace(
       /<table(.*?)>/g,
-      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0"$1 style="max-width: 900px;">'
+      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0"$1 style="max-width: 600px;">'
     );
   } else {
     html = html.replace(
       /<table(.*?)>/g,
-      '<table role="presentation" align="center" width="700" border="0" cellpadding="0" cellspacing="0"$1>'
+      '<table role="presentation" align="center" width="600" border="0" cellpadding="0" cellspacing="0"$1>'
     );
   }
 
@@ -72,9 +72,9 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("align", "center");
         if (isResponsive) {
           newTable.setAttribute("width", "100%");
-          newTable.setAttribute("style", "max-width: 900px;");
+          newTable.setAttribute("style", "max-width: 600px;");
         } else {
-          newTable.setAttribute("width", "700");
+          newTable.setAttribute("width", "600");
         }
         newTable.setAttribute("border", "0");
         newTable.setAttribute("cellpadding", "0");
