@@ -11,7 +11,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   if (isResponsive) {
     html = html.replace(
       /<table(.*?)>/g,
-      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0"$1 style="max-width: 600px;">'
+      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0"$1 style="max-width: 650px;">'
     );
   } else {
     html = html.replace(
@@ -72,7 +72,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("align", "center");
         if (isResponsive) {
           newTable.setAttribute("width", "100%");
-          newTable.setAttribute("style", "max-width: 600px;");
+          newTable.setAttribute("style", "max-width: 650px;");
         } else {
           newTable.setAttribute("width", "600");
         }
@@ -132,15 +132,11 @@ document.getElementById("tabCode").addEventListener("click", () => {
   document
     .getElementById("tabCode")
     .classList.add("text-accent", "border-accent", "border-b-2");
-  document
-    .getElementById("tabCode")
-    .classList.remove("text-graymail");
+  document.getElementById("tabCode").classList.remove("text-graymail");
   document
     .getElementById("tabPreview")
     .classList.remove("text-accent", "border-accent", "border-b-2");
-    document
-    .getElementById("tabPreview")
-    .classList.add("text-graymail");
+  document.getElementById("tabPreview").classList.add("text-graymail");
 });
 
 document.getElementById("tabPreview").addEventListener("click", () => {
