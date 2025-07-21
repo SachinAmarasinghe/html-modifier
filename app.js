@@ -16,7 +16,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   } else {
     html = html.replace(
       /<table(.*?)>/g,
-      '<table role="presentation" align="center" width="600" border="0" cellpadding="0" cellspacing="0"$1>'
+      '<table role="presentation" align="center" width="650" border="0" cellpadding="0" cellspacing="0"$1>'
     );
   }
 
@@ -74,7 +74,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
           newTable.setAttribute("width", "100%");
           newTable.setAttribute("style", "max-width: 650px;");
         } else {
-          newTable.setAttribute("width", "600");
+          newTable.setAttribute("width", "650");
         }
         newTable.setAttribute("border", "0");
         newTable.setAttribute("cellpadding", "0");
