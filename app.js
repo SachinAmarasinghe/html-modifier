@@ -20,16 +20,29 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
     );
   }
 
-  html = html.replace(
-    /<td(?![^>]*style)/g,
-    '<td style="font-size: 0px; padding: 0px;"'
-  );
-  html = html.replace(
-    /<td([^>]*)style="([^"]*)"/g,
-    (match, p1, p2) => `<td${p1} style="font-size: 0px; padding: 0px; ${p2}"`
-  );
-
+  // Remove colspan first
   html = html.replace(/<td[^>]*colspan="[^"]*"[^>]*>/g, "<td>");
+
+  // Add styles to all td elements - more robust approach
+  html = html.replace(
+    /<td\s+([^>]*?)style\s*=\s*""\s*([^>]*?)>/g,
+    '<td $1$2 style="padding: 0px; font-size: 0px; line-height: 0;">'
+  );
+  html = html.replace(
+    /<td\s+([^>]*?)style\s*=\s*"([^"]*?)"\s*([^>]*?)>/g,
+    (match, p1, p2, p3) => {
+      // If style is empty, just add our styles
+      if (p2.trim() === '') {
+        return `<td ${p1}${p3} style="padding: 0px; font-size: 0px; line-height: 0;">`;
+      }
+      // If style has content, prepend our styles
+      return `<td ${p1}${p3} style="padding: 0px; font-size: 0px; line-height: 0; ${p2}">`;
+    }
+  );
+  html = html.replace(
+    /<td(?![^>]*style\s*=)/g,
+    '<td style="padding: 0px; font-size: 0px; line-height: 0;"'
+  );
 
   html = html.replace(/<img([^>]*)src="([^"]*)"/g, (match, p1, src) => {
     let newSrc = imageUrl ? `${imageUrl}${src}` : src;
@@ -53,7 +66,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   }
 
   if (description) {
-    const descRow = `<tr><td style="font-size: 1px; color: #fff; padding: 0px;">${description}</td></tr>`;
+    const descRow = `<tr><td style="padding: 0px; font-size: 0px; line-height: 0; color: #fff;">${description}</td></tr>`;
     html = html.replace(/(<table[^>]*>)/, `$1${descRow}`);
   }
 
@@ -80,19 +93,42 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("cellpadding", "0");
         newTable.setAttribute("cellspacing", "0");
         newTable.appendChild(row.cloneNode(true));
-        row.innerHTML = `<td style="font-size: 0px; padding: 0px;"></td>`;
+        row.innerHTML = `<td style="padding: 0px; font-size: 0px; line-height: 0;"></td>`;
         row.querySelector("td").appendChild(newTable);
       }
     });
   });
 
   html = parser.innerHTML;
+  
+  // Final pass to ensure all td elements have the required styles
   html = html.replace(
-    /style="([^"]*?)(font-size: 0px; padding: 0px; )(.*?)(font-size: 0px; padding: 0px; )([^"]*?)"/g,
+    /<td\s+([^>]*?)style\s*=\s*""\s*([^>]*?)>/g,
+    '<td $1$2 style="padding: 0px; font-size: 0px; line-height: 0;">'
+  );
+  html = html.replace(
+    /<td\s+([^>]*?)style\s*=\s*"([^"]*?)"\s*([^>]*?)>/g,
+    (match, p1, p2, p3) => {
+      // If style is empty, just add our styles
+      if (p2.trim() === '') {
+        return `<td ${p1}${p3} style="padding: 0px; font-size: 0px; line-height: 0;">`;
+      }
+      // If style has content, prepend our styles
+      return `<td ${p1}${p3} style="padding: 0px; font-size: 0px; line-height: 0; ${p2}">`;
+    }
+  );
+  html = html.replace(
+    /<td(?![^>]*style\s*=)/g,
+    '<td style="padding: 0px; font-size: 0px; line-height: 0;"'
+  );
+  
+  // Clean up duplicate styles
+  html = html.replace(
+    /style="([^"]*?)(padding:\s*0px;\s*font-size:\s*0px;\s*line-height:\s*0;\s*)(.*?)(padding:\s*0px;\s*font-size:\s*0px;\s*line-height:\s*0;\s*)([^"]*?)"/g,
     'style="$1$3$5"'
   );
   html = html.replace(
-    /style="([^"]*?)(font-size: 0px; padding: 0px; )([^"]*)"/g,
+    /style="([^"]*?)(padding:\s*0px;\s*font-size:\s*0px;\s*line-height:\s*0;\s*)([^"]*)"/g,
     'style="$1$3"'
   );
 
