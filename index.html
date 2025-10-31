@@ -248,7 +248,7 @@
               </button>
             </div>
 
-            <div id="codeView" class="relative">
+            <div id="codePanel" class="relative">
               <button
                 id="copyBtn"
                 class="absolute top-0 right-0 mt-2 mr-2 text-sm bg-primary text-accent px-4 py-2 rounded-md border border-accent hover:bg-accent hover:text-white transition z-10"
@@ -263,13 +263,13 @@
             </div>
 
             <div
-              id="previewView"
+              id="previewPanel"
               class="hidden border border-graymail-light rounded-md overflow-hidden bg-white shadow-inner"
             >
               <iframe
-                id="previewFrame"
+                id="htmlPreview"
                 class="w-full h-96"
-                sandbox="allow-same-origin allow-scripts"
+                sandbox="allow-same-origin"
               ></iframe>
             </div>
 
@@ -315,6 +315,6 @@
       document.getElementById("year").textContent = new Date().getFullYear();
     </script>
 
-    <script src="app.js"></script>
+    <script src="app.js" defer></script>
   </body>
 </html>
