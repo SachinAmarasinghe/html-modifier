@@ -1,803 +1,194 @@
-/**
- * Email Template Formatter (Photoshop slices → Mailchimp)
- * ------------------------------------------------------
- * What this does:
- * 1) Normalizes tables for email (role, widths, border/cellpadding/cellspacing).
- * 2) Injects a proper hidden preheader (preview text).
- * 3) Enhances images (prefix base URL, alt text, fluid CSS; preserve pixel attrs).
- * 4) Zeroes out only TDs that are image-only (safe for text cells).
- * 5) Adds optional responsive max-width wrapper (600px or 650px) when toggled.
- * 6) Appends UTM params to HTTP/HTTPS links only (skips mailto/tel/#/javascript).
- * 7) Light whitespace tidy—keeps conditionals/VML intact.
- * 8) Adds bgcolor attributes to TDs for Outlook compatibility.
- * 9) Wraps output in proper HTML document structure (DOCTYPE, meta tags, body styling).
- * 10) Supports 600px width option (Mailchimp standard).
- *
- * Notes:
- * - Designed to play nice with Mailchimp's sanitizer.
- * - Avoids turning width/height attributes into percentages (keeps pixel attrs).
- * - If your slices are @2x, keep pixel width attrs and rely on CSS max-width for fluid behavior.
- * - Follows Mailchimp HTML email best practices including Outlook compatibility.
- */
+document.getElementById("modifyBtn").addEventListener("click", function () {
+  let html = document.getElementById("inputHtml").value;
+  const imageUrl = document.getElementById("imageUrl").value;
+  const description = document.getElementById("description").value.trim();
+  const campaignMedium = document.getElementById("campaignMedium").value.trim();
+  const campaignName = document.getElementById("campaignName").value.trim();
+  const isResponsive = document.getElementById("responsiveToggle").checked;
 
-/* ==============================
- * Safe init (wait for DOM)
- * ============================== */
+  html = html.replace(/(<table[^>]*) height="[^"]*"/g, "$1");
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Cache elements once
-  const els = {
-    // Buttons / tabs
-    modifyBtn:        document.getElementById("modifyBtn"),
-    tabPreview:       document.getElementById("tabPreview"),
-    tabCode:          document.getElementById("tabCode"),
-    copyBtn:          document.getElementById("copyBtn"),
-
-    // Panels
-    previewPanel:     document.getElementById("previewPanel"),
-    codePanel:        document.getElementById("codePanel"),
-
-    // Preview + output
-    htmlPreview:      document.getElementById("htmlPreview"),
-    outputHtml:        document.getElementById("outputHtml"),
-
-    // Inputs
-    inputHtml:        document.getElementById("inputHtml"),
-    imageUrl:         document.getElementById("imageUrl"),
-    description:      document.getElementById("description"),
-    hiddenText:       document.getElementById("hiddenText"),
-    campaignMedium:   document.getElementById("campaignMedium"),
-    campaignName:     document.getElementById("campaignName"),
-    responsiveToggle: document.getElementById("responsiveToggle"),
-    use600pxToggle:   document.getElementById("use600pxToggle"),
-  };
-
-  // Expose for other functions (tiny shared state)
-  window.__emailFormatterEls = els;
-
-  // Wire events only if buttons exist
-  els.modifyBtn?.addEventListener("click", onModifyClick);
-  els.tabPreview?.addEventListener("click", () => setTab("preview"));
-  els.tabCode?.addEventListener("click", () => setTab("code"));
-  els.copyBtn?.addEventListener("click", onCopyClick);
-
-  // Initialize to a safe default if both panels exist
-  if (els.previewPanel && els.codePanel) {
-    setTab("preview");
-  } else {
-    console.warn("[email-formatter] Expected #previewPanel and #codePanel in the DOM.");
-  }
-});
-
-/* ==============================
- * Entry Point
- * ============================== */
-
-function onModifyClick() {
-  const { rawHtml, imageBase, preheader, hiddenText, utmMedium, utmCampaign, isResponsive, use600px } = getInputs();
-
-  if (!rawHtml.trim()) {
-    toast("Paste your exported Photoshop HTML first.", "warn");
-    return;
-  }
-
-  // Pipeline
-  let html = rawHtml;
-
-  // 1) Remove table height attrs to avoid client weirdness
-  html = stripTableHeights(html);
-
-  // 2) Normalize tables (widths, role, border/cellpadding/cellspacing)
-  html = normalizeTables(html, isResponsive, use600px);
-
-  // 3) Inject hidden preheader block (Mailchimp-safe layered hiding)
-  if (preheader) {
-    html = injectPreheader(html, preheader);
-  }
-
-  // 4) Inject hidden balance text for image-to-text ratio (after preheader)
-  if (hiddenText) {
-    html = injectHiddenText(html, hiddenText);
-  }
-
-  // 5) Enhance images: prefix, alt, CSS; keep pixel attrs intact
-  html = enhanceImages(html, imageBase, preheader, hiddenText);
-
-  // 6) Zero-out image-only TDs (don't nuke text TDs)
-  html = zeroImageOnlyTds(html);
-
-  // 7) Tidy up pointless colspan="1" (leave real colspans in place)
-  html = removeNoopColspans(html);
-
-  // 8) Add UTM parameters (skip mailto/tel/#/javascript)
-  html = utmifyLinks(html, utmMedium, utmCampaign);
-
-  // 9) Light whitespace tidy without harming conditionals/VML
-  html = lightMinify(html);
-
-  // 10) Add bgcolor attributes to TDs for Outlook compatibility
-  html = addTdBackgroundColors(html);
-
-  // 11) Wrap in proper HTML document structure if not already wrapped
-  html = wrapInEmailDocument(html);
-
-  renderResults(html);
-
-  // Only switch tabs if they exist
-  try { setTab("preview"); } catch { /* ignore if tabs not present */ }
-}
-
-/* ==============================
- * Input/Output helpers
- * ============================== */
-
-function getInputs() {
-  const els = window.__emailFormatterEls || {};
-  const rawHtml       = els.inputHtml?.value || "";
-  const imageBase     = (els.imageUrl?.value || "").trim();
-  const preheader     = (els.description?.value || "").trim();
-  const hiddenText    = (els.hiddenText?.value || "").trim();
-  const utmMedium     = (els.campaignMedium?.value || "").trim();
-  const utmCampaign   = (els.campaignName?.value || "").trim();
-  const isResponsive  = !!els.responsiveToggle?.checked;
-  const use600px      = !!els.use600pxToggle?.checked;
-
-  return { rawHtml, imageBase, preheader, hiddenText, utmMedium, utmCampaign, isResponsive, use600px };
-}
-
-/**
- * Writes both the preview iframe and the code output <textarea>.
- */
-function renderResults(html) {
-  const els = window.__emailFormatterEls || {};
-
-  // Preview
-  const iframe = els.htmlPreview;
-  if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
-    iframe.contentWindow.document.open();
-    iframe.contentWindow.document.write(html);
-    iframe.contentWindow.document.close();
-  }
-
-  // Code - update both the hidden textarea and the displayed code element
-  if (els.outputHtml) {
-    els.outputHtml.value = html;
-  }
-  
-  // Update the displayed code in the <code> element
-  const outputDisplay = document.getElementById("outputHtmlDisplay");
-  if (outputDisplay) {
-    outputDisplay.textContent = html;
-    // Re-run Prism.js highlighting if available
-    if (window.Prism) {
-      Prism.highlightElement(outputDisplay);
-    }
-  }
-}
-
-/**
- * Null-safe tab toggler (don’t assume nodes exist).
- */
-function setTab(which) {
-  const els = window.__emailFormatterEls || {};
-  const preview = els.previewPanel;
-  const code = els.codePanel;
-  const tabPreview = els.tabPreview;
-  const tabCode = els.tabCode;
-
-  if (!preview || !code || !tabPreview || !tabCode) {
-    console.warn("[email-formatter] setTab skipped: tab elements not found.");
-    return;
-  }
-
-  const showPreview = which === "preview";
-
-  // Prefer 'hidden' attribute for a11y
-  preview.toggleAttribute("hidden", !showPreview);
-  code.toggleAttribute("hidden", showPreview);
-
-  // Optional utility class if you use it elsewhere
-  preview.classList.toggle("hidden", !showPreview);
-  code.classList.toggle("hidden", showPreview);
-
-  // Tab styles + a11y state
-  tabPreview.classList.toggle("text-accent", showPreview);
-  tabPreview.classList.toggle("border-accent", showPreview);
-  tabPreview.classList.toggle("border-b-2", showPreview);
-  tabPreview.classList.toggle("text-graymail", !showPreview);
-  tabPreview.setAttribute("aria-selected", String(showPreview));
-
-  tabCode.classList.toggle("text-accent", !showPreview);
-  tabCode.classList.toggle("border-accent", !showPreview);
-  tabCode.classList.toggle("border-b-2", !showPreview);
-  tabCode.classList.toggle("text-graymail", showPreview);
-  tabCode.setAttribute("aria-selected", String(!showPreview));
-}
-
-/**
- * Tiny toast helper (optional; no-op if you don't have a toast system)
- */
-function toast(msg, type = "info") {
-  console[type === "warn" ? "warn" : "log"](msg);
-}
-
-/**
- * Handles copy button click - copies the generated HTML to clipboard.
- */
-function onCopyClick() {
-  const els = window.__emailFormatterEls || {};
-  const outputHtml = els.outputHtml;
-  
-  if (!outputHtml || !outputHtml.value) {
-    toast("No HTML to copy. Generate clean HTML first.", "warn");
-    return;
-  }
-  
-  // Use the Clipboard API
-  navigator.clipboard.writeText(outputHtml.value).then(() => {
-    // Visual feedback
-    const copyBtn = els.copyBtn;
-    if (copyBtn) {
-      const originalText = copyBtn.textContent;
-      copyBtn.textContent = "✅ Copied!";
-      copyBtn.classList.add("bg-green-500");
-      copyBtn.classList.remove("bg-primary");
-      
-      setTimeout(() => {
-        copyBtn.textContent = originalText;
-        copyBtn.classList.remove("bg-green-500");
-        copyBtn.classList.add("bg-primary");
-      }, 2000);
-    }
-    toast("HTML copied to clipboard!", "log");
-  }).catch((err) => {
-    console.error("Failed to copy:", err);
-    // Fallback for older browsers
-    fallbackCopyTextToClipboard(outputHtml.value);
-  });
-}
-
-/**
- * Fallback copy method for browsers that don't support Clipboard API.
- */
-function fallbackCopyTextToClipboard(text) {
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  textArea.style.position = "fixed";
-  textArea.style.top = "0";
-  textArea.style.left = "0";
-  textArea.style.width = "2em";
-  textArea.style.height = "2em";
-  textArea.style.padding = "0";
-  textArea.style.border = "none";
-  textArea.style.outline = "none";
-  textArea.style.boxShadow = "none";
-  textArea.style.background = "transparent";
-  
-  document.body.appendChild(textArea);
-  textArea.focus();
-  textArea.select();
-  
-  try {
-    const successful = document.execCommand('copy');
-    if (successful) {
-      toast("HTML copied to clipboard!", "log");
-      const copyBtn = window.__emailFormatterEls?.copyBtn;
-      if (copyBtn) {
-        const originalText = copyBtn.textContent;
-        copyBtn.textContent = "✅ Copied!";
-        setTimeout(() => {
-          copyBtn.textContent = originalText;
-        }, 2000);
-      }
-    } else {
-      toast("Failed to copy. Please copy manually from the code view.", "warn");
-    }
-  } catch (err) {
-    toast("Failed to copy. Please copy manually from the code view.", "warn");
-  }
-  
-  document.body.removeChild(textArea);
-}
-
-/* ==============================
- * Transformers
- * ============================== */
-
-/**
- * Removes height="..." on <table> tags (these cause rendering issues).
- */
-function stripTableHeights(html) {
-  return html.replace(/(<table[^>]*)\s+height="[^"]*"/gi, "$1");
-}
-
-/**
- * Normalizes table open tags:
- * - role="presentation", align, border/cellpadding/cellspacing attributes
- * - When responsive: width="100%" with style max-width:650px
- * - When fixed: width="650"
- * - Adds Outlook-friendly CSS (mso-table-lspace/rspace, border-collapse)
- */
-function normalizeTables(html, isResponsive, use600px) {
-  return html.replace(/<table\b[^>]*?>/gi, (tag) => {
-    const attrs = normalizeTableAttributes(tag, isResponsive, use600px);
-    const style = normalizeTableStyle(tag, isResponsive, use600px);
-    return `<table ${attrs}${style}>`;
-  });
-}
-
-/**
- * Builds normalized attributes string for <table>.
- * Preserves original id/class/lang/dir/data/aria/role attributes.
- */
-function normalizeTableAttributes(tag, isResponsive, use600px) {
-  const out = [];
-  out.push('role="presentation"');
-  out.push('align="center"');
-
-  const width = use600px ? '600' : '650';
   if (isResponsive) {
-    out.push('width="100%"');
+    html = html.replace(
+      /<table(.*?)>/g,
+      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0"$1 style="max-width: 650px;">'
+    );
   } else {
-    out.push(`width="${width}"`);
+    html = html.replace(
+      /<table(.*?)>/g,
+      '<table role="presentation" align="center" width="650" border="0" cellpadding="0" cellspacing="0"$1>'
+    );
   }
 
-  out.push('border="0"');
-  out.push('cellpadding="0"');
-  out.push('cellspacing="0"');
+  // Remove colspan first
+  html = html.replace(/<td[^>]*colspan="[^"]*"[^>]*>/g, "<td>");
 
-  // Preserve selected attributes from original tag
-  const keep = [];
-  const keepAttrs = tag.match(/\s(?:id|class|lang|dir|data-[\w-]+|aria-[\w-]+|role)="[^"]*"/gi);
-  if (keepAttrs) keep.push(...keepAttrs.map(s => s.trim()));
-
-  return [...keep, ...out].join(" ");
-}
-
-/**
- * Ensures table has Outlook-friendly CSS and optional max-width wrapper.
- */
-function normalizeTableStyle(tag, isResponsive, use600px) {
-  const m = tag.match(/\sstyle="([^"]*)"/i);
-  const existing = m ? m[1] : "";
-  const common = "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;";
-  const maxWidth = use600px ? "600px" : "650px";
-  const max = isResponsive ? `max-width:${maxWidth};` : "";
-  const joined = `${common}${max}${existing ? " " + existing : ""}`.trim();
-  return ` style="${escapeStyle(joined)}"`;
-}
-
-/**
- * Injects a layered-hidden preheader right after the first <table>.
- * This survives Mailchimp sanitization and hides across clients.
- */
-function injectPreheader(html, preheaderText) {
-  const safe = htmlEscape(preheaderText);
-  const block = `
-<tr>
-  <td style="padding:0;">
-    <div style="display:none !important;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;visibility:hidden;">
-      ${safe}
-    </div>
-  </td>
-</tr>`.trim();
-
-  // Insert right after the first opening table
-  return html.replace(/(<table\b[^>]*>)/i, `$1${block}`);
-}
-
-/**
- * Injects hidden balance text for improving image-to-text ratio.
- * Similar to preheader but used specifically for spam filter balance.
- * Inserts after preheader if present, otherwise after first table.
- */
-function injectHiddenText(html, balanceText) {
-  const safe = htmlEscape(balanceText);
-  const block = `
-<tr>
-  <td style="padding:0;">
-    <div style="display:none !important;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;visibility:hidden;">
-      ${safe}
-    </div>
-  </td>
-</tr>`.trim();
-
-  // Try to insert after the first </tr> tag (likely after preheader if it exists)
-  // Use non-global regex to match only the first occurrence
-  const firstTrEnd = html.indexOf('</tr>');
-  if (firstTrEnd !== -1) {
-    // Insert after the first table row (after preheader)
-    return html.slice(0, firstTrEnd + 5) + block + html.slice(firstTrEnd + 5);
-  } else {
-    // Fallback: insert after first table if no rows yet
-    return html.replace(/(<table\b[^>]*>)/i, `$1${block}`);
-  }
-}
-
-/**
- * Enhances <img> tags:
- * - Prefix imageBase for relative URLs (skip http/https/data)
- * - Adds robust inline CSS for consistency across clients
- * - Preserves pixel width/height attributes (don't convert to % attrs)
- * - Adds unique alt="" using: existing alt OR smart filename parsing OR contextual fallback
- * - Avoids duplicate alt text to prevent spam filtering
- */
-function enhanceImages(html, imageBase, preheader, hiddenText) {
-  let imageIndex = 0;
-  const usedAlts = new Set(); // Track used alt texts to prevent exact duplicates
-  
-  // Single pass: replace images with enhanced versions, tracking uniqueness
-  return html.replace(/<img\b([^>]*)>/gi, (imgTag, attrs) => {
-    const currentIndex = imageIndex++;
-    
-    // Extract src
-    const srcMatch = attrs.match(/\ssrc="([^"]*)"/i);
-    const src = srcMatch ? srcMatch[1] : "";
-    
-    // Extract existing alt
-    const altMatch = attrs.match(/\salt="([^"]*)"/i);
-    const existingAlt = altMatch ? altMatch[1].trim() : "";
-
-    // Determine final src
-    const isAbs = /^https?:\/\//i.test(src) || /^data:/i.test(src);
-    const srcFinal =
-      imageBase && !isAbs ? joinUrl(imageBase, src) : src;
-
-    // Generate unique alt text
-    let alt = "";
-    
-    if (existingAlt) {
-      // Use existing alt if provided (user intent)
-      alt = existingAlt;
-      // Track it to detect if we need to make it unique
-      if (usedAlts.has(alt.toLowerCase())) {
-        // Duplicate detected - append index to make unique
-        alt = `${alt} ${currentIndex + 1}`;
+  // Add styles to all td elements - more robust approach
+  html = html.replace(
+    /<td\s+([^>]*?)style\s*=\s*""\s*([^>]*?)>/g,
+    '<td $1$2 style="padding: 0px; font-size: 0px; line-height: 0;">'
+  );
+  html = html.replace(
+    /<td\s+([^>]*?)style\s*=\s*"([^"]*?)"\s*([^>]*?)>/g,
+    (match, p1, p2, p3) => {
+      // If style is empty, just add our styles
+      if (p2.trim() === '') {
+        return `<td ${p1}${p3} style="padding: 0px; font-size: 0px; line-height: 0;">`;
       }
-      usedAlts.add(alt.toLowerCase());
-    } else {
-      // Generate smart alt text from filename - guaranteed unique per image
-      alt = generateUniqueAltText(src, currentIndex, preheader, hiddenText);
-      
-      // Ensure uniqueness even if generateUniqueAltText somehow creates duplicates
-      let uniqueAlt = alt;
-      let suffix = 1;
-      while (usedAlts.has(uniqueAlt.toLowerCase())) {
-        uniqueAlt = `${alt} variant ${suffix}`;
-        suffix++;
-      }
-      alt = uniqueAlt;
-      usedAlts.add(alt.toLowerCase());
-    }
-
-    // Build style
-    const styleBase = [
-      "display:block",
-      "line-height:0",
-      "font-size:0",
-      "height:auto",
-      "max-width:100%",
-      "border:0",
-      "outline:none",
-      "text-decoration:none",
-      "-ms-interpolation-mode:bicubic"
-    ].join(";");
-
-    const styleMatch = attrs.match(/\sstyle="([^"]*)"/i);
-    const style = styleMatch ? `${styleBase}; ${styleMatch[1]}` : styleBase;
-
-    // Remove old alt/style/src and rebuild tag
-    let cleanAttrs = attrs
-      .replace(/\salt="[^"]*"/i, "")
-      .replace(/\sstyle="[^"]*"/i, "")
-      .replace(/\ssrc="[^"]*"/i, "");
-
-    cleanAttrs = cleanAttrs.trim().length ? " " + cleanAttrs.trim() : "";
-
-    return `<img src="${srcFinal}" alt="${htmlEscape(alt)}" style="${escapeStyle(style)}"${cleanAttrs}>`;
-  });
-}
-
-/**
- * Generates unique, descriptive alt text from image filename and context.
- * Avoids repeating the same alt text across multiple images.
- */
-function generateUniqueAltText(src, index, preheader, hiddenText) {
-  // Extract filename and parse it intelligently
-  const filename = src.split("/").pop() || "";
-  const basename = filename
-    .replace(/\.[a-z0-9]+$/i, "")
-    .replace(/^index_/, "") // Remove common Photoshop export prefixes
-    .replace(/^slice_/, "")
-    .replace(/^image_/, "")
-    .replace(/^img_/, "")
-    .trim();
-
-  // Parse filename for meaningful parts
-  let altParts = [];
-  
-  // Extract numbers (e.g., "01", "02" from "index_01.jpg")
-  const numberMatch = basename.match(/(\d+)/);
-  const hasNumber = numberMatch && numberMatch[1];
-  
-  // Extract descriptive words from filename
-  const words = basename
-    .replace(/\d+/g, "")
-    .split(/[-_\s]+/)
-    .filter(w => w.length > 2) // Only meaningful words
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .filter(Boolean);
-
-  // Build descriptive alt text
-  if (words.length > 0) {
-    // Use filename-derived description
-    altParts.push(...words);
-    if (hasNumber) {
-      altParts.push(`section ${hasNumber}`);
-    }
-  } else if (hasNumber) {
-    // Just a number - use contextual description
-    altParts.push("Image");
-    altParts.push(hasNumber);
-  } else {
-    // Generic but unique
-    altParts.push("Content image");
-    altParts.push(`${index + 1}`);
-  }
-
-  // Create unique alt text
-  let alt = altParts.join(" ");
-  
-  // If we still have duplicates or empty, make it more unique using context
-  if (!alt || alt.length < 3) {
-    // Use parts of preheader or hidden text as inspiration if available
-    const contextText = (hiddenText || preheader || "").trim();
-    if (contextText) {
-      const contextWords = contextText
-        .split(/\s+/)
-        .filter(w => w.length > 4)
-        .slice(0, 2);
-      if (contextWords.length > 0) {
-        alt = `${contextWords.join(" ")} visual ${index + 1}`;
-      } else {
-        alt = `Email content image ${index + 1}`;
-      }
-    } else {
-      alt = `Email content image ${index + 1}`;
-    }
-  }
-
-  return alt.trim();
-}
-
-/**
- * Zeroes only TDs that contain images exclusively (plus whitespace).
- * Keeps text TDs untouched so real copy remains readable/indexable.
- */
-function zeroImageOnlyTds(html) {
-  // TDs with only whitespace + one <img> + whitespace
-  return html.replace(
-    /<td\b([^>]*)>(\s*)<img\b[^>]*>(\s*)<\/td>/gi,
-    (m, attrs, pre, post) => {
-      const hasStyle = /\sstyle="/i.test(attrs);
-      const zero = "padding:0;font-size:0;line-height:0;";
-      if (hasStyle) {
-        return m.replace(/style="([^"]*)"/i, (s, val) => `style="${escapeStyle(`${zero} ${val}`)}"`);
-      }
-      const injected = attrs.trim().length ? ` ${attrs.trim()}` : "";
-      const img = m.match(/<img\b[^>]*>/i)[0];
-      return `<td${injected} style="${zero}">${pre}${img}${post}</td>`;
+      // If style has content, prepend our styles
+      return `<td ${p1}${p3} style="padding: 0px; font-size: 0px; line-height: 0; ${p2}">`;
     }
   );
-}
+  html = html.replace(
+    /<td(?![^>]*style\s*=)/g,
+    '<td style="padding: 0px; font-size: 0px; line-height: 0;"'
+  );
 
-/**
- * Removes only no-op colspan="1" (or empty). Leaves real colspans intact.
- */
-function removeNoopColspans(html) {
-  return html.replace(/\scolspan="(?:1|)"/gi, "");
-}
-
-/**
- * Appends UTM params to HTTP/HTTPS links. Skips mailto/tel/#/javascript.
- * Works with relative links by using a parsing base and then removing it.
- */
-function utmifyLinks(html, utmMedium, utmCampaign) {
-  if (!utmMedium && !utmCampaign) return html;
-
-  return html.replace(/<a\b([^>]*)href="([^"]*)"/gi, (match, attrs, href) => {
-    if (/^(mailto:|tel:|#|javascript:)/i.test(href)) return match;
-
-    try {
-      const url = new URL(href, "https://example.com"); // base to parse relative
-      if (utmMedium)   url.searchParams.set("utm_medium", utmMedium);
-      if (utmCampaign) url.searchParams.set("utm_campaign", utmCampaign);
-      const finalHref = url.toString().replace("https://example.com", "");
-      return `<a${attrs}href="${finalHref}"`;
-    } catch {
-      return match;
-    }
-  });
-}
-
-/**
- * Light whitespace minifier; keeps conditional comments/VML intact.
- * - Collapses 2+ spaces into 1 where safe (outside tags).
- * - Trims trailing spaces on lines.
- */
-function lightMinify(html) {
-  return html
-    .replace(/[ \t]+$/gm, "")  // trim line-end spaces
-    .replace(/ {2,}/g, " ");   // collapse runs of spaces
-}
-
-/* ==============================
- * Utilities
- * ============================== */
-
-/**
- * Joins a base URL and a (possibly) relative path into a single absolute/clean URL.
- */
-function joinUrl(base, path) {
-  const cleanBase = (base || "").replace(/\/+$/, "");
-  const cleanPath = (path || "").replace(/^\/+/, "");
-  return `${cleanBase}/${cleanPath}`;
-}
-
-/**
- * Escapes text for HTML context.
- */
-function htmlEscape(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/**
- * Escapes suspicious chars in inline style strings (keeps CSS safe).
- */
-function escapeStyle(style) {
-  return String(style).replace(/"/g, "&quot;");
-}
-
-/**
- * Wraps HTML in a proper email document structure if not already wrapped.
- * Adds DOCTYPE, HTML structure, meta tags, and body styling for email clients.
- */
-function wrapInEmailDocument(html) {
-  // Check if already wrapped in HTML document
-  const hasHtmlTag = /^\s*<html[^>]*>/i.test(html.trim());
-  const hasDoctype = /^\s*<!DOCTYPE/i.test(html.trim());
-  
-  if (hasDoctype && hasHtmlTag) {
-    // Already wrapped, but ensure body has proper styling
-    return ensureBodyStyles(html);
-  }
-  
-  // Extract body content if wrapped in body tags, otherwise use all HTML
-  let bodyContent = html;
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if (bodyMatch) {
-    bodyContent = bodyMatch[1];
-  } else {
-    // Remove any existing html/head/body tags if present
-    bodyContent = html.replace(/<\/?(html|head|body)[^>]*>/gi, '');
-  }
-  
-  return `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!--[if mso]>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
-  <![endif]-->
-  <title>Email</title>
-</head>
-<body style="margin:0;padding:0;width:100%!important;min-width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;background-color:#ffffff;" bgcolor="#ffffff">
-${bodyContent}
-</body>
-</html>`;
-}
-
-/**
- * Ensures body tag has proper email client styling if HTML structure exists.
- */
-function ensureBodyStyles(html) {
-  // Check if body exists and has proper styling
-  if (!/<body/i.test(html)) {
-    return html;
-  }
-  
-  // Add Outlook-safe attributes to body if missing
-  return html.replace(/<body([^>]*)>/i, (match, attrs) => {
-    // Check if bgcolor exists
-    const hasBgcolor = /bgcolor=/i.test(attrs);
-    // Check if style exists with background
-    const hasBackgroundStyle = /style="[^"]*background/i.test(attrs);
-    
-    let updated = attrs;
-    
-    // Add bgcolor if missing
-    if (!hasBgcolor) {
-      const bgMatch = attrs.match(/style="([^"]*)"/i);
-      if (bgMatch) {
-        const bgColor = extractBackgroundColor(bgMatch[1]) || '#ffffff';
-        updated = updated.replace(/style="([^"]*)"/i, `style="$1" bgcolor="${bgColor}"`);
-      } else {
-        updated = `${updated} bgcolor="#ffffff"`;
-      }
-    }
-    
-    // Ensure essential email styles are present
-    const styleMatch = updated.match(/style="([^"]*)"/i);
-    const existingStyle = styleMatch ? styleMatch[1] : '';
-    const essentialStyles = [
-      'margin:0',
-      'padding:0',
-      'width:100%!important',
-      '-webkit-text-size-adjust:100%',
-      '-ms-text-size-adjust:100%'
-    ];
-    
-    let finalStyle = existingStyle;
-    for (const style of essentialStyles) {
-      const [prop] = style.split(':');
-      if (!new RegExp(`${prop.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`, 'i').test(finalStyle)) {
-        finalStyle = finalStyle ? `${finalStyle}; ${style}` : style;
-      }
-    }
-    
+  html = html.replace(/<img([^>]*)src="([^"]*)"/g, (match, p1, src) => {
+    let newSrc = imageUrl ? `${imageUrl}${src}` : src;
+    let styleMatch = /style="([^"]*)"/.exec(p1);
+    let newStyle =
+      "display:block;line-height:0;font-size:0;height:auto; width: 100%;";
     if (styleMatch) {
-      updated = updated.replace(/style="[^"]*"/i, `style="${escapeStyle(finalStyle)}"`);
+      newStyle += " " + styleMatch[1];
+      return `<img${p1.replace(
+        styleMatch[0],
+        ""
+      )} style="${newStyle}" src="${newSrc}"`;
     } else {
-      updated = `${updated} style="${escapeStyle(finalStyle)}"`;
+      return `<img${p1} style="${newStyle}" src="${newSrc}"`;
     }
-    
-    return `<body${updated}>`;
   });
-}
 
-/**
- * Extracts background color from CSS style string.
- */
-function extractBackgroundColor(style) {
-  const match = style.match(/background(?:-color)?\s*:\s*([^;]+)/i);
-  if (match) {
-    return match[1].trim();
+  if (isResponsive) {
+    html = html.replace(/<img([^>]*)width="[^"]*"/g, '<img$1 width="100%"');
+    html = html.replace(/<img([^>]*)height="[^"]*"/g, '<img$1 height="auto"');
   }
-  return null;
-}
 
-/**
- * Adds bgcolor attribute to TDs that have background colors in style.
- * This is critical for Outlook which ignores CSS background-color in some cases.
- */
-function addTdBackgroundColors(html) {
-  return html.replace(/<td\b([^>]*)>/gi, (match, attrs) => {
-    // Skip if bgcolor already exists
-    if (/bgcolor=/i.test(attrs)) {
-      return match;
-    }
-    
-    // Check for background-color in style
-    const styleMatch = attrs.match(/style="([^"]*)"/i);
-    if (styleMatch) {
-      const bgColor = extractBackgroundColor(styleMatch[1]);
-      if (bgColor) {
-        // Add bgcolor attribute for Outlook
-        return `<td${attrs} bgcolor="${bgColor.replace(/['"]/g, '')}">`;
+  if (description) {
+    const descRow = `<tr><td style="padding: 0px; font-size: 0px; line-height: 0; color: #fff;">${description}</td></tr>`;
+    html = html.replace(/(<table[^>]*>)/, `$1${descRow}`);
+  }
+
+  const parser = document.createElement("div");
+  parser.innerHTML = html;
+  parser.querySelectorAll("table").forEach((table) => {
+    const rows = table.querySelectorAll("tr");
+    rows.forEach((row) => {
+      const columns = row.querySelectorAll("td");
+      if (
+        columns.length > 1 &&
+        !Array.from(columns).some((td) => td.hasAttribute("colspan"))
+      ) {
+        const newTable = document.createElement("table");
+        newTable.setAttribute("role", "presentation");
+        newTable.setAttribute("align", "center");
+        if (isResponsive) {
+          newTable.setAttribute("width", "100%");
+          newTable.setAttribute("style", "max-width: 650px;");
+        } else {
+          newTable.setAttribute("width", "650");
+        }
+        newTable.setAttribute("border", "0");
+        newTable.setAttribute("cellpadding", "0");
+        newTable.setAttribute("cellspacing", "0");
+        newTable.appendChild(row.cloneNode(true));
+        row.innerHTML = `<td style="padding: 0px; font-size: 0px; line-height: 0;"></td>`;
+        row.querySelector("td").appendChild(newTable);
       }
-    }
-    
-    return match;
+    });
   });
-}
+
+  html = parser.innerHTML;
+  
+  // Final pass to ensure all td elements have the required styles
+  html = html.replace(
+    /<td\s+([^>]*?)style\s*=\s*""\s*([^>]*?)>/g,
+    '<td $1$2 style="padding: 0px; font-size: 0px; line-height: 0;">'
+  );
+  html = html.replace(
+    /<td\s+([^>]*?)style\s*=\s*"([^"]*?)"\s*([^>]*?)>/g,
+    (match, p1, p2, p3) => {
+      // If style is empty, just add our styles
+      if (p2.trim() === '') {
+        return `<td ${p1}${p3} style="padding: 0px; font-size: 0px; line-height: 0;">`;
+      }
+      // If style has content, prepend our styles
+      return `<td ${p1}${p3} style="padding: 0px; font-size: 0px; line-height: 0; ${p2}">`;
+    }
+  );
+  html = html.replace(
+    /<td(?![^>]*style\s*=)/g,
+    '<td style="padding: 0px; font-size: 0px; line-height: 0;"'
+  );
+  
+  // Clean up duplicate styles
+  html = html.replace(
+    /style="([^"]*?)(padding:\s*0px;\s*font-size:\s*0px;\s*line-height:\s*0;\s*)(.*?)(padding:\s*0px;\s*font-size:\s*0px;\s*line-height:\s*0;\s*)([^"]*?)"/g,
+    'style="$1$3$5"'
+  );
+  html = html.replace(
+    /style="([^"]*?)(padding:\s*0px;\s*font-size:\s*0px;\s*line-height:\s*0;\s*)([^"]*)"/g,
+    'style="$1$3"'
+  );
+
+  if (campaignMedium && campaignName) {
+    html = html.replace(/<a([^>]*)href="([^"]*)"/g, (match, p1, href) => {
+      const url = new URL(href, window.location.href);
+      url.searchParams.set("utm_medium", campaignMedium);
+      url.searchParams.set("utm_campaign", campaignName);
+      return `<a${p1}href="${url.toString()}"`;
+    });
+  }
+
+  // Update both output areas
+  // Update both output areas
+  document.getElementById("outputHtml").value = html;
+  const display = document.getElementById("outputHtmlDisplay");
+  display.textContent = html;
+  Prism.highlightElement(display);
+
+  // ✅ Show live preview
+  const previewFrame = document.getElementById("previewFrame");
+  previewFrame.srcdoc = html;
+});
+
+document.getElementById("copyBtn").addEventListener("click", () => {
+  const htmlContent = document.getElementById("outputHtml").value;
+  navigator.clipboard
+    .writeText(htmlContent)
+    .then(() => alert("HTML copied to clipboard!"))
+    .catch(() => alert("Failed to copy."));
+});
+
+// Tab toggle logic
+document.getElementById("tabCode").addEventListener("click", () => {
+  document.getElementById("codeView").classList.remove("hidden");
+  document.getElementById("previewView").classList.add("hidden");
+  document
+    .getElementById("tabCode")
+    .classList.add("text-accent", "border-accent", "border-b-2");
+  document.getElementById("tabCode").classList.remove("text-graymail");
+  document
+    .getElementById("tabPreview")
+    .classList.remove("text-accent", "border-accent", "border-b-2");
+  document.getElementById("tabPreview").classList.add("text-graymail");
+});
+
+document.getElementById("tabPreview").addEventListener("click", () => {
+  document.getElementById("codeView").classList.add("hidden");
+  document.getElementById("previewView").classList.remove("hidden");
+  document
+    .getElementById("tabPreview")
+    .classList.add("text-accent", "border-accent", "border-b-2", "text-accent");
+  document.getElementById("tabPreview").classList.remove("text-graymail");
+  document
+    .getElementById("tabCode")
+    .classList.remove(
+      "text-accent",
+      "border-accent",
+      "border-b-2",
+      "text-accent"
+    );
+  document.getElementById("tabCode").classList.add("text-graymail");
+});
