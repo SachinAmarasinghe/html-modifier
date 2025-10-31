@@ -99,7 +99,7 @@ function onModifyClick() {
   }
 
   // 5) Enhance images: prefix, alt, CSS; keep pixel attrs intact
-  html = enhanceImages(html, imageBase, preheader);
+  html = enhanceImages(html, imageBase, preheader, hiddenText);
 
   // 6) Zero-out image-only TDs (don't nuke text TDs)
   html = zeroImageOnlyTds(html);
@@ -337,28 +337,57 @@ function injectHiddenText(html, balanceText) {
  * Enhances <img> tags:
  * - Prefix imageBase for relative URLs (skip http/https/data)
  * - Adds robust inline CSS for consistency across clients
- * - Preserves pixel width/height attributes (don’t convert to % attrs)
- * - Adds alt="" using: existing alt OR preheader OR filename
+ * - Preserves pixel width/height attributes (don't convert to % attrs)
+ * - Adds unique alt="" using: existing alt OR smart filename parsing OR contextual fallback
+ * - Avoids duplicate alt text to prevent spam filtering
  */
-function enhanceImages(html, imageBase, preheader) {
+function enhanceImages(html, imageBase, preheader, hiddenText) {
+  let imageIndex = 0;
+  const usedAlts = new Set(); // Track used alt texts to prevent exact duplicates
+  
+  // Single pass: replace images with enhanced versions, tracking uniqueness
   return html.replace(/<img\b([^>]*)>/gi, (imgTag, attrs) => {
+    const currentIndex = imageIndex++;
+    
     // Extract src
     const srcMatch = attrs.match(/\ssrc="([^"]*)"/i);
     const src = srcMatch ? srcMatch[1] : "";
+    
+    // Extract existing alt
+    const altMatch = attrs.match(/\salt="([^"]*)"/i);
+    const existingAlt = altMatch ? altMatch[1].trim() : "";
 
     // Determine final src
     const isAbs = /^https?:\/\//i.test(src) || /^data:/i.test(src);
     const srcFinal =
       imageBase && !isAbs ? joinUrl(imageBase, src) : src;
 
-    // Determine alt (existing > preheader > filename)
-    const altMatch = attrs.match(/\salt="([^"]*)"/i);
-    const altExisting = altMatch ? altMatch[1].trim() : "";
-    const altFromFile = (src.split("/").pop() || "")
-      .replace(/\.[a-z0-9]+$/i, "")
-      .replace(/[-_]+/g, " ")
-      .trim();
-    const alt = altExisting || preheader || altFromFile || "";
+    // Generate unique alt text
+    let alt = "";
+    
+    if (existingAlt) {
+      // Use existing alt if provided (user intent)
+      alt = existingAlt;
+      // Track it to detect if we need to make it unique
+      if (usedAlts.has(alt.toLowerCase())) {
+        // Duplicate detected - append index to make unique
+        alt = `${alt} ${currentIndex + 1}`;
+      }
+      usedAlts.add(alt.toLowerCase());
+    } else {
+      // Generate smart alt text from filename - guaranteed unique per image
+      alt = generateUniqueAltText(src, currentIndex, preheader, hiddenText);
+      
+      // Ensure uniqueness even if generateUniqueAltText somehow creates duplicates
+      let uniqueAlt = alt;
+      let suffix = 1;
+      while (usedAlts.has(uniqueAlt.toLowerCase())) {
+        uniqueAlt = `${alt} variant ${suffix}`;
+        suffix++;
+      }
+      alt = uniqueAlt;
+      usedAlts.add(alt.toLowerCase());
+    }
 
     // Build style
     const styleBase = [
@@ -386,6 +415,78 @@ function enhanceImages(html, imageBase, preheader) {
 
     return `<img src="${srcFinal}" alt="${htmlEscape(alt)}" style="${escapeStyle(style)}"${cleanAttrs}>`;
   });
+}
+
+/**
+ * Generates unique, descriptive alt text from image filename and context.
+ * Avoids repeating the same alt text across multiple images.
+ */
+function generateUniqueAltText(src, index, preheader, hiddenText) {
+  // Extract filename and parse it intelligently
+  const filename = src.split("/").pop() || "";
+  const basename = filename
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/^index_/, "") // Remove common Photoshop export prefixes
+    .replace(/^slice_/, "")
+    .replace(/^image_/, "")
+    .replace(/^img_/, "")
+    .trim();
+
+  // Parse filename for meaningful parts
+  let altParts = [];
+  
+  // Extract numbers (e.g., "01", "02" from "index_01.jpg")
+  const numberMatch = basename.match(/(\d+)/);
+  const hasNumber = numberMatch && numberMatch[1];
+  
+  // Extract descriptive words from filename
+  const words = basename
+    .replace(/\d+/g, "")
+    .split(/[-_\s]+/)
+    .filter(w => w.length > 2) // Only meaningful words
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .filter(Boolean);
+
+  // Build descriptive alt text
+  if (words.length > 0) {
+    // Use filename-derived description
+    altParts.push(...words);
+    if (hasNumber) {
+      altParts.push(`section ${hasNumber}`);
+    }
+  } else if (hasNumber) {
+    // Just a number - use contextual description
+    altParts.push("Image");
+    altParts.push(hasNumber);
+  } else {
+    // Generic but unique
+    altParts.push("Content image");
+    altParts.push(`${index + 1}`);
+  }
+
+  // Create unique alt text
+  let alt = altParts.join(" ");
+  
+  // If we still have duplicates or empty, make it more unique using context
+  if (!alt || alt.length < 3) {
+    // Use parts of preheader or hidden text as inspiration if available
+    const contextText = (hiddenText || preheader || "").trim();
+    if (contextText) {
+      const contextWords = contextText
+        .split(/\s+/)
+        .filter(w => w.length > 4)
+        .slice(0, 2);
+      if (contextWords.length > 0) {
+        alt = `${contextWords.join(" ")} visual ${index + 1}`;
+      } else {
+        alt = `Email content image ${index + 1}`;
+      }
+    } else {
+      alt = `Email content image ${index + 1}`;
+    }
+  }
+
+  return alt.trim();
 }
 
 /**
