@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inputHtml:        document.getElementById("inputHtml"),
     imageUrl:         document.getElementById("imageUrl"),
     description:      document.getElementById("description"),
+    hiddenText:       document.getElementById("hiddenText"),
     campaignMedium:   document.getElementById("campaignMedium"),
     campaignName:     document.getElementById("campaignName"),
     responsiveToggle: document.getElementById("responsiveToggle"),
@@ -66,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
  * ============================== */
 
 function onModifyClick() {
-  const { rawHtml, imageBase, preheader, utmMedium, utmCampaign, isResponsive } = getInputs();
+  const { rawHtml, imageBase, preheader, hiddenText, utmMedium, utmCampaign, isResponsive } = getInputs();
 
   if (!rawHtml.trim()) {
     toast("Paste your exported Photoshop HTML first.", "warn");
@@ -87,19 +88,24 @@ function onModifyClick() {
     html = injectPreheader(html, preheader);
   }
 
-  // 4) Enhance images: prefix, alt, CSS; keep pixel attrs intact
+  // 4) Inject hidden balance text for image-to-text ratio (after preheader)
+  if (hiddenText) {
+    html = injectHiddenText(html, hiddenText);
+  }
+
+  // 5) Enhance images: prefix, alt, CSS; keep pixel attrs intact
   html = enhanceImages(html, imageBase, preheader);
 
-  // 5) Zero-out image-only TDs (don’t nuke text TDs)
+  // 6) Zero-out image-only TDs (don't nuke text TDs)
   html = zeroImageOnlyTds(html);
 
-  // 6) Tidy up pointless colspan="1" (leave real colspans in place)
+  // 7) Tidy up pointless colspan="1" (leave real colspans in place)
   html = removeNoopColspans(html);
 
-  // 7) Add UTM parameters (skip mailto/tel/#/javascript)
+  // 8) Add UTM parameters (skip mailto/tel/#/javascript)
   html = utmifyLinks(html, utmMedium, utmCampaign);
 
-  // 8) Light whitespace tidy without harming conditionals/VML
+  // 9) Light whitespace tidy without harming conditionals/VML
   html = lightMinify(html);
 
   renderResults(html);
@@ -117,11 +123,12 @@ function getInputs() {
   const rawHtml       = els.inputHtml?.value || "";
   const imageBase     = (els.imageUrl?.value || "").trim();
   const preheader     = (els.description?.value || "").trim();
+  const hiddenText    = (els.hiddenText?.value || "").trim();
   const utmMedium     = (els.campaignMedium?.value || "").trim();
   const utmCampaign   = (els.campaignName?.value || "").trim();
   const isResponsive  = !!els.responsiveToggle?.checked;
 
-  return { rawHtml, imageBase, preheader, utmMedium, utmCampaign, isResponsive };
+  return { rawHtml, imageBase, preheader, hiddenText, utmMedium, utmCampaign, isResponsive };
 }
 
 /**
@@ -282,6 +289,34 @@ function injectPreheader(html, preheaderText) {
 
   // Insert right after the first opening table
   return html.replace(/(<table\b[^>]*>)/i, `$1${block}`);
+}
+
+/**
+ * Injects hidden balance text for improving image-to-text ratio.
+ * Similar to preheader but used specifically for spam filter balance.
+ * Inserts after preheader if present, otherwise after first table.
+ */
+function injectHiddenText(html, balanceText) {
+  const safe = htmlEscape(balanceText);
+  const block = `
+<tr>
+  <td style="padding:0;">
+    <div style="display:none !important;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;visibility:hidden;">
+      ${safe}
+    </div>
+  </td>
+</tr>`.trim();
+
+  // Try to insert after the first </tr> tag (likely after preheader if it exists)
+  // Use non-global regex to match only the first occurrence
+  const firstTrEnd = html.indexOf('</tr>');
+  if (firstTrEnd !== -1) {
+    // Insert after the first table row (after preheader)
+    return html.slice(0, firstTrEnd + 5) + block + html.slice(firstTrEnd + 5);
+  } else {
+    // Fallback: insert after first table if no rows yet
+    return html.replace(/(<table\b[^>]*>)/i, `$1${block}`);
+  }
 }
 
 /**
