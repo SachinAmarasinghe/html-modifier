@@ -1,353 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CleanSend</title>
 
-    <!-- favicon  -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
-    <link rel="manifest" href="/favicon/site.webmanifest">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CleanSend</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          fontFamily: {
-            sans: ["system-ui", "sans-serif"],
-            heading: ['"Means Web"', "Georgia", "serif"],
-          },
-          extend: {
-            colors: {
-              primary: "#FFE01B",
-              background: "#F6F6F4",
-              surface: "#FFFFFF",
-              accent: "#241C15",
-              graymail: {
-                light: "#EAEAEB",
-                DEFAULT: "#8C8C8C",
-                dark: "#403F3E",
-              },
+  <!-- favicon  -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
+  <link rel="manifest" href="/favicon/site.webmanifest">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        fontFamily: {
+          sans: ["system-ui", "sans-serif"],
+          heading: ['"Means Web"', "Georgia", "serif"],
+        },
+        extend: {
+          colors: {
+            primary: "#FFE01B",
+            background: "#F6F6F4",
+            surface: "#FFFFFF",
+            accent: "#241C15",
+            graymail: {
+              light: "#EAEAEB",
+              DEFAULT: "#8C8C8C",
+              dark: "#403F3E",
             },
           },
         },
-      };
-    </script>
+      },
+    };
+  </script>
 
-    <!-- Fonts -->
-    <style>
-      @import url("https://fonts.googleapis.com/css2?family=Georgia&display=swap");
+  <!-- Fonts -->
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Georgia&display=swap");
 
-      @font-face {
-        font-family: "Means Web";
-        src: local("Means Web"), local("MeansWeb");
-        font-weight: 400;
-        font-style: normal;
+    @font-face {
+      font-family: "Means Web";
+      src: local("Means Web"), local("MeansWeb");
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: "Means Web", Georgia, serif;
+    }
+
+    code[class*="language-"] {
+      white-space: pre-wrap !important;
+      word-break: break-word;
+      word-wrap: break-word;
+    }
+
+    @keyframes fade-in {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
       }
 
-      h1,
-      h2,
-      h3 {
-        font-family: "Means Web", Georgia, serif;
+      100% {
+        opacity: 1;
+        transform: translateY(0);
       }
+    }
 
-      code[class*="language-"] {
-        white-space: pre-wrap !important;
-        word-break: break-word;
-        word-wrap: break-word;
-      }
+    .animate-fade-in {
+      animation: fade-in 0.6s ease-out forwards;
+    }
+  </style>
 
-      @keyframes fade-in {
-        0% {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
+  <!-- Prism.js for syntax highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
+</head>
 
-      .animate-fade-in {
-        animation: fade-in 0.6s ease-out forwards;
-      }
-    </style>
-
-    <!-- Prism.js for syntax highlighting -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
-  </head>
-  <body>
-    <!-- Header -->
-    <header class="bg-graymail-light">
-      <div
-        class="max-w-7xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-10 items-center"
-      >
-        <!-- Text content -->
-        <div class="space-y-5 text-center md:text-left">
-          <h1 class="text-5xl font-bold text-accent font-heading leading-tight">
-            Smarter Email HTML, Less Effort
-          </h1>
-          <p
-            class="text-graymail-dark text-lg max-w-xl mx-auto md:mx-0 leading-relaxed"
-          >
-            Tidy up raw HTML, add tracking, fix image paths, and make layouts
-            responsive—fast and fuss-free.
-          </p>
-        </div>
-
-        <!-- Hero image -->
-        <div class="flex justify-center md:justify-end">
-          <img
-            src="hero.png"
-            alt="Email Editor Illustration"
-            class="max-h-50 w-full"
-          />
-        </div>
+<body>
+  <!-- Header -->
+  <header class="bg-graymail-light">
+    <div class="max-w-7xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-10 items-center">
+      <!-- Text content -->
+      <div class="space-y-5 text-center md:text-left">
+        <h1 class="text-5xl font-bold text-accent font-heading leading-tight">
+          Smarter Email HTML, Less Effort
+        </h1>
+        <p class="text-graymail-dark text-lg max-w-xl mx-auto md:mx-0 leading-relaxed">
+          Tidy up raw HTML, add tracking, fix image paths, and make layouts
+          responsive—fast and fuss-free.
+        </p>
       </div>
-    </header>
 
-    <!-- content  -->
-    <div
-      class="bg-background text-accent min-h-screen flex items-start justify-center py-7 px-4"
-    >
-      <div class="w-full max-w-5xl animate-fade-in">
-        <div
-          class="w-full max-w-5xl bg-surface rounded-xl border border-graymail-light shadow p-10 space-y-10 animate-fade-in"
-        >
-          <!-- form and output go here -->
+      <!-- Hero image -->
+      <div class="flex justify-center md:justify-end">
+        <img src="hero.png" alt="Email Editor Illustration" class="max-h-50 w-full" />
+      </div>
+    </div>
+  </header>
 
-          <!-- Form Fields -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="md:col-span-2">
-              <label
-                for="inputHtml"
-                class="block text-sm font-semibold text-accent mb-1"
-              >
-                Original HTML Code
-              </label>
-              <textarea
-                id="inputHtml"
-                rows="8"
-                placeholder="Paste your raw email HTML here..."
-                class="w-full border border-graymail-light rounded-md p-4 font-mono text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary resize-y transition"
-              ></textarea>
-            </div>
+  <!-- content  -->
+  <div class="bg-background text-accent min-h-screen flex items-start justify-center py-7 px-4">
+    <div class="w-full max-w-5xl animate-fade-in">
+      <div
+        class="w-full max-w-5xl bg-surface rounded-xl border border-graymail-light shadow p-10 space-y-10 animate-fade-in">
+        <!-- form and output go here -->
 
-            <div>
-              <label
-                for="imageUrl"
-                class="block text-sm font-semibold text-accent mb-1"
-              >
-                Base Image URL (required)
-              </label>
-              <input
-                id="imageUrl"
-                type="text"
-                required
-                placeholder="e.g. https://example.com/images/"
-                class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
-              />
-            </div>
-
-            <div>
-              <label
-                for="description"
-                class="block text-sm font-semibold text-accent mb-1"
-              >
-                Preview Text (appears in inbox)
-              </label>
-              <textarea
-                id="description"
-                rows="2"
-                placeholder="e.g. Limited-time offer on our new spring release..."
-                class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
-              ></textarea>
-            </div>
-
-            <div class="md:col-span-2">
-              <label
-                for="hiddenText"
-                class="block text-sm font-semibold text-accent mb-1"
-              >
-                Hidden Balance Text (improves image-to-text ratio, hidden in email)
-              </label>
-              <textarea
-                id="hiddenText"
-                rows="3"
-                placeholder="e.g. Our spring collection features sustainable materials and timeless designs. Shop now for exclusive deals on new arrivals..."
-                class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
-              ></textarea>
-              <p class="mt-1 text-xs text-graymail">
-                This text is hidden but helps balance image-to-text ratio for better deliverability
-              </p>
-            </div>
-
-            <div>
-              <label
-                for="campaignMedium"
-                class="block text-sm font-semibold text-accent mb-1"
-              >
-                UTM Medium (utm_medium)
-              </label>
-              <input
-                id="campaignMedium"
-                type="text"
-                placeholder="e.g. email, newsletter"
-                class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
-              />
-            </div>
-
-            <div>
-              <label
-                for="campaignName"
-                class="block text-sm font-semibold text-accent mb-1"
-              >
-                UTM Campaign Name (utm_campaign)
-              </label>
-              <input
-                id="campaignName"
-                type="text"
-                placeholder="e.g. spring_launch_2025"
-                class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"
-              />
-            </div>
-
-            <div class="md:col-span-2 space-y-3">
-              <div class="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="responsiveToggle"
-                  class="accent-primary h-5 w-5 rounded-md focus:ring-primary focus:ring-2"
-                />
-                <label
-                  for="responsiveToggle"
-                  class="text-sm font-medium text-accent"
-                >
-                  Convert layout to be mobile responsive (650px max-width)
-                </label>
-              </div>
-              <div class="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="use600pxToggle"
-                  class="accent-primary h-5 w-5 rounded-md focus:ring-primary focus:ring-2"
-                />
-                <label
-                  for="use600pxToggle"
-                  class="text-sm font-medium text-accent"
-                >
-                  Use 600px width (Mailchimp standard)
-                </label>
-              </div>
-            </div>
+        <!-- Form Fields -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="md:col-span-2">
+            <label for="inputHtml" class="block text-sm font-semibold text-accent mb-1">
+              Original HTML Code
+            </label>
+            <textarea id="inputHtml" rows="8" placeholder="Paste your raw email HTML here..."
+              class="w-full border border-graymail-light rounded-md p-4 font-mono text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary resize-y transition"></textarea>
           </div>
 
-          <!-- Modify Button -->
-          <div class="text-center">
-            <button
-              id="modifyBtn"
-              class="px-6 py-3 bg-primary text-accent font-semibold rounded-md border border-accent shadow-sm hover:bg-accent hover:text-white transition"
-            >
-              🧹 Generate Clean HTML
+          <div>
+            <label for="imageUrl" class="block text-sm font-semibold text-accent mb-1">
+              Base Image URL (required)
+            </label>
+            <input id="imageUrl" type="text" required placeholder="e.g. https://example.com/images/"
+              class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition" />
+          </div>
+
+          <div>
+            <label for="description" class="block text-sm font-semibold text-accent mb-1">
+              Preview Text (appears in inbox)
+            </label>
+            <textarea id="description" rows="2" placeholder="e.g. Limited-time offer on our new spring release..."
+              class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition"></textarea>
+          </div>
+
+          <div>
+            <label for="campaignMedium" class="block text-sm font-semibold text-accent mb-1">
+              UTM Medium (utm_medium)
+            </label>
+            <input id="campaignMedium" type="text" placeholder="e.g. email, newsletter"
+              class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition" />
+          </div>
+
+          <div>
+            <label for="campaignName" class="block text-sm font-semibold text-accent mb-1">
+              UTM Campaign Name (utm_campaign)
+            </label>
+            <input id="campaignName" type="text" placeholder="e.g. spring_launch_2025"
+              class="w-full border border-graymail-light rounded-md p-3 text-sm bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary transition" />
+          </div>
+
+          <div class="md:col-span-2 flex items-center gap-2">
+            <input type="checkbox" id="responsiveToggle"
+              class="accent-primary h-5 w-5 rounded-md focus:ring-primary focus:ring-2" />
+            <label for="responsiveToggle" class="text-sm font-medium text-accent">
+              Convert layout to be mobile responsive
+            </label>
+          </div>
+        </div>
+
+        <!-- Modify Button -->
+        <div class="text-center">
+          <button id="modifyBtn"
+            class="px-6 py-3 bg-primary text-accent font-semibold rounded-md border border-accent shadow-sm hover:bg-accent hover:text-white transition">
+            🧹 Generate Clean HTML
+          </button>
+        </div>
+
+        <!-- Output Section -->
+        <div>
+          <h2 class="text-2xl font-bold text-accent mb-4 font-heading">
+            Modified HTML Output
+          </h2>
+
+          <div class="mb-4 flex gap-4 border-b border-graymail-light">
+            <button id="tabCode"
+              class="py-2 px-4 text-sm font-semibold text-accent border-b-2 border-accent hover:text-accent">
+              📄 Code
+            </button>
+            <button id="tabPreview" class="py-2 px-4 text-sm font-semibold text-graymail hover:text-accent">
+              👁️ Preview
             </button>
           </div>
 
-          <!-- Output Section -->
-          <div>
-            <h2 class="text-2xl font-bold text-accent mb-4 font-heading">
-              Modified HTML Output
-            </h2>
-
-            <div class="mb-4 flex gap-4 border-b border-graymail-light">
-              <button
-                id="tabCode"
-                class="py-2 px-4 text-sm font-semibold text-accent border-b-2 border-accent hover:text-accent"
-              >
-                📄 Code
-              </button>
-              <button
-                id="tabPreview"
-                class="py-2 px-4 text-sm font-semibold text-graymail hover:text-accent"
-              >
-                👁️ Preview
-              </button>
-            </div>
-
-            <div id="codePanel" class="relative">
-              <button
-                id="copyBtn"
-                class="absolute top-0 right-0 mt-2 mr-2 text-sm bg-primary text-accent px-4 py-2 rounded-md border border-accent hover:bg-accent hover:text-white transition z-10"
-              >
-                📋 Copy Code
-              </button>
-              <pre
-                class="bg-gray-900 rounded-md overflow-auto p-4 text-sm shadow-inner text-gray-100 whitespace-pre-wrap break-words font-mono max-h-96"
-              >
+          <div id="codeView" class="relative">
+            <button id="copyBtn"
+              class="absolute top-0 right-0 mt-2 mr-2 text-sm bg-primary text-accent px-4 py-2 rounded-md border border-accent hover:bg-accent hover:text-white transition z-10">
+              📋 Copy Code
+            </button>
+            <pre
+              class="bg-gray-900 rounded-md overflow-auto p-4 text-sm shadow-inner text-gray-100 whitespace-pre-wrap break-words font-mono max-h-96">
 <code id="outputHtmlDisplay" class="language-markup"></code>
     </pre>
-            </div>
-
-            <div
-              id="previewPanel"
-              class="hidden border border-graymail-light rounded-md overflow-hidden bg-white shadow-inner"
-            >
-              <iframe
-                id="htmlPreview"
-                class="w-full h-96"
-                sandbox="allow-same-origin"
-              ></iframe>
-            </div>
-
-            <textarea id="outputHtml" class="hidden"></textarea>
           </div>
+
+          <div id="previewView"
+            class="hidden border border-graymail-light rounded-md overflow-hidden bg-white shadow-inner">
+            <iframe id="previewFrame" class="w-full h-96" sandbox="allow-same-origin allow-scripts"></iframe>
+          </div>
+
+          <textarea id="outputHtml" class="hidden"></textarea>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Footer -->
-    <footer class="bg-black text-accent text-sm">
-      <div
-        class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-white"
-      >
-        <p class="text-center md:text-left">
-          Built with ❤️ for email developers — © <span id="year"></span> Email
-          HTML Modifier
-        </p>
-        <a
-          href="https://github.com/SachinAmarasinghe/html-modifier"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="flex items-center gap-1 text-white underline hover:text-primary transition"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-            class="w-5 h-5"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M12 0C5.37 0 0 5.373 0 12c0 5.303 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577v-2.025c-3.338.727-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.744.083-.729.083-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.835 2.809 1.305 3.495.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.336-5.467-5.93 0-1.31.469-2.381 1.235-3.221-.123-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.3 1.23a11.52 11.52 0 0 1 3.003-.404c1.02.005 2.045.138 3.003.404 2.29-1.552 3.296-1.23 3.296-1.23.654 1.652.242 2.873.12 3.176.77.84 1.233 1.911 1.233 3.22 0 4.604-2.807 5.624-5.48 5.922.43.372.823 1.102.823 2.222v3.293c0 .32.216.694.825.576C20.565 21.796 24 17.3 24 12c0-6.627-5.373-12-12-12z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </a>
-      </div>
-    </footer>
+  <!-- Footer -->
+  <footer class="bg-black text-accent text-sm">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-white">
+      <p class="text-center md:text-left">
+        Built with ❤️ for email developers — © <span id="year"></span> Email
+        HTML Modifier
+      </p>
+      <a href="https://github.com/SachinAmarasinghe/html-modifier" target="_blank" rel="noopener noreferrer"
+        class="flex items-center gap-1 text-white underline hover:text-primary transition">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-5 h-5">
+          <path fill-rule="evenodd"
+            d="M12 0C5.37 0 0 5.373 0 12c0 5.303 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577v-2.025c-3.338.727-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.744.083-.729.083-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.835 2.809 1.305 3.495.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.336-5.467-5.93 0-1.31.469-2.381 1.235-3.221-.123-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.3 1.23a11.52 11.52 0 0 1 3.003-.404c1.02.005 2.045.138 3.003.404 2.29-1.552 3.296-1.23 3.296-1.23.654 1.652.242 2.873.12 3.176.77.84 1.233 1.911 1.233 3.22 0 4.604-2.807 5.624-5.48 5.922.43.372.823 1.102.823 2.222v3.293c0 .32.216.694.825.576C20.565 21.796 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+            clip-rule="evenodd" />
+        </svg>
+      </a>
+    </div>
+  </footer>
 
-    <script>
-      // Set the current year dynamically
-      document.getElementById("year").textContent = new Date().getFullYear();
-    </script>
+  <script>
+    // Set the current year dynamically
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 
-    <script src="app.js" defer></script>
-  </body>
+  <script src="app.js"></script>
+</body>
+
 </html>
