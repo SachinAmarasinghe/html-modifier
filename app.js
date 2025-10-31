@@ -6,14 +6,18 @@
  * 2) Injects a proper hidden preheader (preview text).
  * 3) Enhances images (prefix base URL, alt text, fluid CSS; preserve pixel attrs).
  * 4) Zeroes out only TDs that are image-only (safe for text cells).
- * 5) Adds optional responsive max-width wrapper (650px) when toggled.
+ * 5) Adds optional responsive max-width wrapper (600px or 650px) when toggled.
  * 6) Appends UTM params to HTTP/HTTPS links only (skips mailto/tel/#/javascript).
  * 7) Light whitespace tidy—keeps conditionals/VML intact.
+ * 8) Adds bgcolor attributes to TDs for Outlook compatibility.
+ * 9) Wraps output in proper HTML document structure (DOCTYPE, meta tags, body styling).
+ * 10) Supports 600px width option (Mailchimp standard).
  *
  * Notes:
- * - Designed to play nice with Mailchimp’s sanitizer.
+ * - Designed to play nice with Mailchimp's sanitizer.
  * - Avoids turning width/height attributes into percentages (keeps pixel attrs).
  * - If your slices are @2x, keep pixel width attrs and rely on CSS max-width for fluid behavior.
+ * - Follows Mailchimp HTML email best practices including Outlook compatibility.
  */
 
 /* ==============================
@@ -44,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
     campaignMedium:   document.getElementById("campaignMedium"),
     campaignName:     document.getElementById("campaignName"),
     responsiveToggle: document.getElementById("responsiveToggle"),
+    use600pxToggle:   document.getElementById("use600pxToggle"),
   };
 
   // Expose for other functions (tiny shared state)
@@ -67,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
  * ============================== */
 
 function onModifyClick() {
-  const { rawHtml, imageBase, preheader, hiddenText, utmMedium, utmCampaign, isResponsive } = getInputs();
+  const { rawHtml, imageBase, preheader, hiddenText, utmMedium, utmCampaign, isResponsive, use600px } = getInputs();
 
   if (!rawHtml.trim()) {
     toast("Paste your exported Photoshop HTML first.", "warn");
@@ -81,7 +86,7 @@ function onModifyClick() {
   html = stripTableHeights(html);
 
   // 2) Normalize tables (widths, role, border/cellpadding/cellspacing)
-  html = normalizeTables(html, isResponsive);
+  html = normalizeTables(html, isResponsive, use600px);
 
   // 3) Inject hidden preheader block (Mailchimp-safe layered hiding)
   if (preheader) {
@@ -108,6 +113,12 @@ function onModifyClick() {
   // 9) Light whitespace tidy without harming conditionals/VML
   html = lightMinify(html);
 
+  // 10) Add bgcolor attributes to TDs for Outlook compatibility
+  html = addTdBackgroundColors(html);
+
+  // 11) Wrap in proper HTML document structure if not already wrapped
+  html = wrapInEmailDocument(html);
+
   renderResults(html);
 
   // Only switch tabs if they exist
@@ -127,8 +138,9 @@ function getInputs() {
   const utmMedium     = (els.campaignMedium?.value || "").trim();
   const utmCampaign   = (els.campaignName?.value || "").trim();
   const isResponsive  = !!els.responsiveToggle?.checked;
+  const use600px      = !!els.use600pxToggle?.checked;
 
-  return { rawHtml, imageBase, preheader, hiddenText, utmMedium, utmCampaign, isResponsive };
+  return { rawHtml, imageBase, preheader, hiddenText, utmMedium, utmCampaign, isResponsive, use600px };
 }
 
 /**
@@ -225,10 +237,10 @@ function stripTableHeights(html) {
  * - When fixed: width="650"
  * - Adds Outlook-friendly CSS (mso-table-lspace/rspace, border-collapse)
  */
-function normalizeTables(html, isResponsive) {
+function normalizeTables(html, isResponsive, use600px) {
   return html.replace(/<table\b[^>]*?>/gi, (tag) => {
-    const attrs = normalizeTableAttributes(tag, isResponsive);
-    const style = normalizeTableStyle(tag, isResponsive);
+    const attrs = normalizeTableAttributes(tag, isResponsive, use600px);
+    const style = normalizeTableStyle(tag, isResponsive, use600px);
     return `<table ${attrs}${style}>`;
   });
 }
@@ -237,15 +249,16 @@ function normalizeTables(html, isResponsive) {
  * Builds normalized attributes string for <table>.
  * Preserves original id/class/lang/dir/data/aria/role attributes.
  */
-function normalizeTableAttributes(tag, isResponsive) {
+function normalizeTableAttributes(tag, isResponsive, use600px) {
   const out = [];
   out.push('role="presentation"');
   out.push('align="center"');
 
+  const width = use600px ? '600' : '650';
   if (isResponsive) {
     out.push('width="100%"');
   } else {
-    out.push('width="650"');
+    out.push(`width="${width}"`);
   }
 
   out.push('border="0"');
@@ -263,11 +276,12 @@ function normalizeTableAttributes(tag, isResponsive) {
 /**
  * Ensures table has Outlook-friendly CSS and optional max-width wrapper.
  */
-function normalizeTableStyle(tag, isResponsive) {
+function normalizeTableStyle(tag, isResponsive, use600px) {
   const m = tag.match(/\sstyle="([^"]*)"/i);
   const existing = m ? m[1] : "";
   const common = "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;";
-  const max = isResponsive ? "max-width:650px;" : "";
+  const maxWidth = use600px ? "600px" : "650px";
+  const max = isResponsive ? `max-width:${maxWidth};` : "";
   const joined = `${common}${max}${existing ? " " + existing : ""}`.trim();
   return ` style="${escapeStyle(joined)}"`;
 }
@@ -464,4 +478,144 @@ function htmlEscape(str) {
  */
 function escapeStyle(style) {
   return String(style).replace(/"/g, "&quot;");
+}
+
+/**
+ * Wraps HTML in a proper email document structure if not already wrapped.
+ * Adds DOCTYPE, HTML structure, meta tags, and body styling for email clients.
+ */
+function wrapInEmailDocument(html) {
+  // Check if already wrapped in HTML document
+  const hasHtmlTag = /^\s*<html[^>]*>/i.test(html.trim());
+  const hasDoctype = /^\s*<!DOCTYPE/i.test(html.trim());
+  
+  if (hasDoctype && hasHtmlTag) {
+    // Already wrapped, but ensure body has proper styling
+    return ensureBodyStyles(html);
+  }
+  
+  // Extract body content if wrapped in body tags, otherwise use all HTML
+  let bodyContent = html;
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    bodyContent = bodyMatch[1];
+  } else {
+    // Remove any existing html/head/body tags if present
+    bodyContent = html.replace(/<\/?(html|head|body)[^>]*>/gi, '');
+  }
+  
+  return `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <title>Email</title>
+</head>
+<body style="margin:0;padding:0;width:100%!important;min-width:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;background-color:#ffffff;" bgcolor="#ffffff">
+${bodyContent}
+</body>
+</html>`;
+}
+
+/**
+ * Ensures body tag has proper email client styling if HTML structure exists.
+ */
+function ensureBodyStyles(html) {
+  // Check if body exists and has proper styling
+  if (!/<body/i.test(html)) {
+    return html;
+  }
+  
+  // Add Outlook-safe attributes to body if missing
+  return html.replace(/<body([^>]*)>/i, (match, attrs) => {
+    // Check if bgcolor exists
+    const hasBgcolor = /bgcolor=/i.test(attrs);
+    // Check if style exists with background
+    const hasBackgroundStyle = /style="[^"]*background/i.test(attrs);
+    
+    let updated = attrs;
+    
+    // Add bgcolor if missing
+    if (!hasBgcolor) {
+      const bgMatch = attrs.match(/style="([^"]*)"/i);
+      if (bgMatch) {
+        const bgColor = extractBackgroundColor(bgMatch[1]) || '#ffffff';
+        updated = updated.replace(/style="([^"]*)"/i, `style="$1" bgcolor="${bgColor}"`);
+      } else {
+        updated = `${updated} bgcolor="#ffffff"`;
+      }
+    }
+    
+    // Ensure essential email styles are present
+    const styleMatch = updated.match(/style="([^"]*)"/i);
+    const existingStyle = styleMatch ? styleMatch[1] : '';
+    const essentialStyles = [
+      'margin:0',
+      'padding:0',
+      'width:100%!important',
+      '-webkit-text-size-adjust:100%',
+      '-ms-text-size-adjust:100%'
+    ];
+    
+    let finalStyle = existingStyle;
+    for (const style of essentialStyles) {
+      const [prop] = style.split(':');
+      if (!new RegExp(`${prop.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`, 'i').test(finalStyle)) {
+        finalStyle = finalStyle ? `${finalStyle}; ${style}` : style;
+      }
+    }
+    
+    if (styleMatch) {
+      updated = updated.replace(/style="[^"]*"/i, `style="${escapeStyle(finalStyle)}"`);
+    } else {
+      updated = `${updated} style="${escapeStyle(finalStyle)}"`;
+    }
+    
+    return `<body${updated}>`;
+  });
+}
+
+/**
+ * Extracts background color from CSS style string.
+ */
+function extractBackgroundColor(style) {
+  const match = style.match(/background(?:-color)?\s*:\s*([^;]+)/i);
+  if (match) {
+    return match[1].trim();
+  }
+  return null;
+}
+
+/**
+ * Adds bgcolor attribute to TDs that have background colors in style.
+ * This is critical for Outlook which ignores CSS background-color in some cases.
+ */
+function addTdBackgroundColors(html) {
+  return html.replace(/<td\b([^>]*)>/gi, (match, attrs) => {
+    // Skip if bgcolor already exists
+    if (/bgcolor=/i.test(attrs)) {
+      return match;
+    }
+    
+    // Check for background-color in style
+    const styleMatch = attrs.match(/style="([^"]*)"/i);
+    if (styleMatch) {
+      const bgColor = extractBackgroundColor(styleMatch[1]);
+      if (bgColor) {
+        // Add bgcolor attribute for Outlook
+        return `<td${attrs} bgcolor="${bgColor.replace(/['"]/g, '')}">`;
+      }
+    }
+    
+    return match;
+  });
 }
