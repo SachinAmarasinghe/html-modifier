@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
     modifyBtn:        document.getElementById("modifyBtn"),
     tabPreview:       document.getElementById("tabPreview"),
     tabCode:          document.getElementById("tabCode"),
+    copyBtn:          document.getElementById("copyBtn"),
 
     // Panels
     previewPanel:     document.getElementById("previewPanel"),
@@ -38,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Preview + output
     htmlPreview:      document.getElementById("htmlPreview"),
-    outputHtml:       document.getElementById("outputHtml"),
+    outputHtml:        document.getElementById("outputHtml"),
 
     // Inputs
     inputHtml:        document.getElementById("inputHtml"),
@@ -58,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
   els.modifyBtn?.addEventListener("click", onModifyClick);
   els.tabPreview?.addEventListener("click", () => setTab("preview"));
   els.tabCode?.addEventListener("click", () => setTab("code"));
+  els.copyBtn?.addEventListener("click", onCopyClick);
 
   // Initialize to a safe default if both panels exist
   if (els.previewPanel && els.codePanel) {
@@ -213,10 +215,89 @@ function setTab(which) {
 }
 
 /**
- * Tiny toast helper (optional; no-op if you don’t have a toast system)
+ * Tiny toast helper (optional; no-op if you don't have a toast system)
  */
 function toast(msg, type = "info") {
   console[type === "warn" ? "warn" : "log"](msg);
+}
+
+/**
+ * Handles copy button click - copies the generated HTML to clipboard.
+ */
+function onCopyClick() {
+  const els = window.__emailFormatterEls || {};
+  const outputHtml = els.outputHtml;
+  
+  if (!outputHtml || !outputHtml.value) {
+    toast("No HTML to copy. Generate clean HTML first.", "warn");
+    return;
+  }
+  
+  // Use the Clipboard API
+  navigator.clipboard.writeText(outputHtml.value).then(() => {
+    // Visual feedback
+    const copyBtn = els.copyBtn;
+    if (copyBtn) {
+      const originalText = copyBtn.textContent;
+      copyBtn.textContent = "✅ Copied!";
+      copyBtn.classList.add("bg-green-500");
+      copyBtn.classList.remove("bg-primary");
+      
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.classList.remove("bg-green-500");
+        copyBtn.classList.add("bg-primary");
+      }, 2000);
+    }
+    toast("HTML copied to clipboard!", "log");
+  }).catch((err) => {
+    console.error("Failed to copy:", err);
+    // Fallback for older browsers
+    fallbackCopyTextToClipboard(outputHtml.value);
+  });
+}
+
+/**
+ * Fallback copy method for browsers that don't support Clipboard API.
+ */
+function fallbackCopyTextToClipboard(text) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.width = "2em";
+  textArea.style.height = "2em";
+  textArea.style.padding = "0";
+  textArea.style.border = "none";
+  textArea.style.outline = "none";
+  textArea.style.boxShadow = "none";
+  textArea.style.background = "transparent";
+  
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  
+  try {
+    const successful = document.execCommand('copy');
+    if (successful) {
+      toast("HTML copied to clipboard!", "log");
+      const copyBtn = window.__emailFormatterEls?.copyBtn;
+      if (copyBtn) {
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = "✅ Copied!";
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+        }, 2000);
+      }
+    } else {
+      toast("Failed to copy. Please copy manually from the code view.", "warn");
+    }
+  } catch (err) {
+    toast("Failed to copy. Please copy manually from the code view.", "warn");
+  }
+  
+  document.body.removeChild(textArea);
 }
 
 /* ==============================
