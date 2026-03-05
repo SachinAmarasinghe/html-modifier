@@ -1,5 +1,13 @@
 document.getElementById("modifyBtn").addEventListener("click", function () {
   let html = document.getElementById("inputHtml").value;
+
+  if (!html.trim()) {
+    const btn = document.getElementById("modifyBtn");
+    const original = btn.textContent;
+    btn.textContent = "⚠️ Paste HTML first";
+    setTimeout(() => { btn.textContent = original; }, 2000);
+    return;
+  }
   const imageUrl = document.getElementById("imageUrl").value;
   const description = document.getElementById("description").value.trim();
   const campaignMedium = document.getElementById("campaignMedium").value.trim();
@@ -10,40 +18,36 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
 
   if (isResponsive) {
     html = html.replace(
-      /<table(.*?)>/g,
-      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0"$1 style="max-width: 650px;">'
+      /<table[^>]*>/g,
+      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;max-width:650px;">'
     );
   } else {
     html = html.replace(
-      /<table(.*?)>/g,
-      '<table role="presentation" align="center" width="650" border="0" cellpadding="0" cellspacing="0"$1>'
+      /<table[^>]*>/g,
+      '<table role="presentation" align="center" width="650" border="0" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;">'
     );
   }
 
   html = html.replace(
     /<td(?![^>]*style)/g,
-    '<td style="font-size: 0px; padding: 0px;"'
+    '<td style="font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly;"'
   );
   html = html.replace(
     /<td([^>]*)style="([^"]*)"/g,
-    (match, p1, p2) => `<td${p1} style="font-size: 0px; padding: 0px; ${p2}"`
+    (match, p1, p2) => `<td${p1} style="font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; ${p2}"`
   );
 
-  html = html.replace(/<td[^>]*colspan="[^"]*"[^>]*>/g, "<td>");
+  html = html.replace(/<td[^>]*colspan="[^"]*"[^>]*>/g, () => "<td>");
 
-  html = html.replace(/<img([^>]*)src="([^"]*)"/g, (match, p1, src) => {
+  html = html.replace(/<img([^>]*)src="([^"]*)"/g, (_match, p1, src) => {
     let newSrc = imageUrl ? `${imageUrl}${src}` : src;
     let styleMatch = /style="([^"]*)"/.exec(p1);
-    let newStyle =
-      "display:block;line-height:0;font-size:0;height:auto; width: 100%;";
+    let newStyle = "display:block;line-height:0;font-size:0;max-width:100%;border:0;outline:none;text-decoration:none;";
     if (styleMatch) {
       newStyle += " " + styleMatch[1];
-      return `<img${p1.replace(
-        styleMatch[0],
-        ""
-      )} style="${newStyle}" src="${newSrc}"`;
+      return `<img${p1.replace(styleMatch[0], "")} border="0" style="${newStyle}" src="${newSrc}"`;
     } else {
-      return `<img${p1} style="${newStyle}" src="${newSrc}"`;
+      return `<img${p1} border="0" style="${newStyle}" src="${newSrc}"`;
     }
   });
 
@@ -53,7 +57,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   }
 
   if (description) {
-    const descRow = `<tr><td style="font-size: 1px; color: #fff; padding: 0px;">${description}</td></tr>`;
+    const descRow = `<tr><td style="padding:0;font-size:0;line-height:0;mso-line-height-rule:exactly;"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;">${description}</div></td></tr>`;
     html = html.replace(/(<table[^>]*>)/, `$1${descRow}`);
   }
 
@@ -80,7 +84,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("cellpadding", "0");
         newTable.setAttribute("cellspacing", "0");
         newTable.appendChild(row.cloneNode(true));
-        row.innerHTML = `<td style="font-size: 0px; padding: 0px;"></td>`;
+        row.innerHTML = `<td style="font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly;"></td>`;
         row.querySelector("td").appendChild(newTable);
       }
     });
@@ -88,20 +92,26 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
 
   html = parser.innerHTML;
   html = html.replace(
-    /style="([^"]*?)(font-size: 0px; padding: 0px; )(.*?)(font-size: 0px; padding: 0px; )([^"]*?)"/g,
+    /style="([^"]*?)(font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; )(.*?)(font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; )([^"]*?)"/g,
     'style="$1$3$5"'
   );
   html = html.replace(
-    /style="([^"]*?)(font-size: 0px; padding: 0px; )([^"]*)"/g,
+    /style="([^"]*?)(font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; )([^"]*)"/g,
     'style="$1$3"'
   );
 
-  if (campaignMedium && campaignName) {
-    html = html.replace(/<a([^>]*)href="([^"]*)"/g, (match, p1, href) => {
-      const url = new URL(href, window.location.href);
-      url.searchParams.set("utm_medium", campaignMedium);
-      url.searchParams.set("utm_campaign", campaignName);
-      return `<a${p1}href="${url.toString()}"`;
+  if (campaignMedium || campaignName) {
+    html = html.replace(/<a([^>]*)href="([^"]*)"/g, (_match, p1, href) => {
+      if (/^(mailto:|tel:|#|javascript:)/i.test(href)) return `<a${p1}href="${href}"`;
+      try {
+        const url = new URL(href, "https://example.com");
+        if (campaignMedium) url.searchParams.set("utm_medium", campaignMedium);
+        if (campaignName) url.searchParams.set("utm_campaign", campaignName);
+        const finalHref = url.toString().replace("https://example.com", "");
+        return `<a${p1}href="${finalHref}"`;
+      } catch {
+        return `<a${p1}href="${href}"`;
+      }
     });
   }
 
@@ -119,10 +129,18 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
 
 document.getElementById("copyBtn").addEventListener("click", () => {
   const htmlContent = document.getElementById("outputHtml").value;
+  const btn = document.getElementById("copyBtn");
+
+  function flashBtn(text) {
+    const original = btn.textContent;
+    btn.textContent = text;
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  }
+
   navigator.clipboard
     .writeText(htmlContent)
-    .then(() => alert("HTML copied to clipboard!"))
-    .catch(() => alert("Failed to copy."));
+    .then(() => flashBtn("✅ Copied!"))
+    .catch(() => flashBtn("❌ Failed"));
 });
 
 // Tab toggle logic
