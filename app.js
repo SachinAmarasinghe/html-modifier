@@ -24,7 +24,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   } else {
     html = html.replace(
       /<table[^>]*>/g,
-      '<table role="presentation" align="center" width="650" border="0" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;">'
+      '<table role="presentation" align="center" width="700" border="0" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;">'
     );
   }
 
