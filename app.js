@@ -76,9 +76,10 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("align", "center");
         if (isResponsive) {
           newTable.setAttribute("width", "100%");
-          newTable.setAttribute("style", "max-width: 650px;");
+          newTable.setAttribute("style", "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;max-width:650px;");
         } else {
-          newTable.setAttribute("width", "650");
+          newTable.setAttribute("width", "700");
+          newTable.setAttribute("style", "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;");
         }
         newTable.setAttribute("border", "0");
         newTable.setAttribute("cellpadding", "0");
