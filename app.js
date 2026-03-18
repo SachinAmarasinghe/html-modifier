@@ -19,7 +19,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   if (isResponsive) {
     html = html.replace(
       /<table[^>]*>/g,
-      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;max-width:650px;">'
+      '<table role="presentation" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;max-width:700px;">'
     );
   } else {
     html = html.replace(
@@ -40,9 +40,9 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   html = html.replace(/<td[^>]*colspan="[^"]*"[^>]*>/g, () => "<td>");
 
   html = html.replace(/<img([^>]*)src="([^"]*)"/g, (_match, p1, src) => {
-    let newSrc = imageUrl ? `${imageUrl}${src}` : src;
+    let newSrc = imageUrl ? `${imageUrl.replace(/\/+$/, '')}/${src.replace(/^\/+/, '')}` : src;
     let styleMatch = /style="([^"]*)"/.exec(p1);
-    let newStyle = "display:block;line-height:0;font-size:0;max-width:100%;border:0;outline:none;text-decoration:none;";
+    let newStyle = "display:block;line-height:0;font-size:0;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;";
     if (styleMatch) {
       newStyle += " " + styleMatch[1];
       return `<img${p1.replace(styleMatch[0], "")} border="0" style="${newStyle}" src="${newSrc}"`;
@@ -76,7 +76,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("align", "center");
         if (isResponsive) {
           newTable.setAttribute("width", "100%");
-          newTable.setAttribute("style", "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;max-width:650px;");
+          newTable.setAttribute("style", "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;max-width:700px;");
         } else {
           newTable.setAttribute("width", "700");
           newTable.setAttribute("style", "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;");
@@ -100,6 +100,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
     /style="([^"]*?)(font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; )([^"]*)"/g,
     'style="$1$3"'
   );
+  html = html.replace(/ style=""/g, '');
 
   if (campaignMedium || campaignName) {
     html = html.replace(/<a([^>]*)href="([^"]*)"/g, (_match, p1, href) => {
@@ -116,7 +117,6 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
     });
   }
 
-  // Update both output areas
   // Update both output areas
   document.getElementById("outputHtml").value = html;
   const display = document.getElementById("outputHtmlDisplay");
