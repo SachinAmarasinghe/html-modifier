@@ -28,21 +28,26 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
     );
   }
 
-  html = html.replace(
-    /<td(?![^>]*style)/g,
-    '<td style="font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly;"'
-  );
-  html = html.replace(
-    /<td([^>]*)style="([^"]*)"/g,
-    (match, p1, p2) => `<td${p1} style="font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; ${p2}"`
-  );
+  const tdStyle = "font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly;";
+  html = html.replace(/<td([^>]*)>/g, (match, attrs) => {
+    if (/\bstyle="/.test(attrs)) return match.replace(/\bstyle="/, `style="${tdStyle} `);
+    return `<td${attrs} style="${tdStyle}">`;
+  });
 
-  html = html.replace(/<td[^>]*colspan="[^"]*"[^>]*>/g, () => "<td>");
+  html = html.replace(/<td([^>]*)>/g, (match, attrs) => {
+    if (!/\bcolspan="/.test(attrs)) return match;
+    const styleMatch = /style="([^"]*)"/.exec(attrs);
+    return styleMatch ? `<td style="${styleMatch[1]}">` : '<td>';
+  });
+
+  html = html.replace(/<td(?![^>]*valign)/g, '<td valign="top"');
 
   html = html.replace(/<img([^>]*)src="([^"]*)"/g, (_match, p1, src) => {
-    let newSrc = imageUrl ? `${imageUrl.replace(/\/+$/, '')}/${src.replace(/^\/+/, '')}` : src;
+    let newSrc = imageUrl && !src.startsWith('http') ? `${imageUrl.replace(/\/+$/, '')}/${src.replace(/^\/+/, '')}` : src;
     let styleMatch = /style="([^"]*)"/.exec(p1);
-    let newStyle = "display:block;line-height:0;font-size:0;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;";
+    let newStyle = isResponsive
+      ? "display:block;line-height:0;font-size:0;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;"
+      : "display:block;line-height:0;font-size:0;max-width:100%;border:0;outline:none;text-decoration:none;";
     if (styleMatch) {
       newStyle += " " + styleMatch[1];
       return `<img${p1.replace(styleMatch[0], "")} border="0" style="${newStyle}" src="${newSrc}"`;
@@ -52,8 +57,10 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   });
 
   if (isResponsive) {
-    html = html.replace(/<img([^>]*)width="[^"]*"/g, '<img$1 width="100%"');
-    html = html.replace(/<img([^>]*)height="[^"]*"/g, '<img$1 height="auto"');
+    html = html.replace(/<img([^>]*)width="(\d+)"/g, (match, p1, w) =>
+      parseInt(w) < 150 ? match : `<img${p1} width="100%"`
+    );
+    html = html.replace(/<img([^>]*)height="[^"]*"/g, '<img$1');
   }
 
   if (description) {
@@ -64,10 +71,12 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
   const parser = document.createElement("div");
   parser.innerHTML = html;
   parser.querySelectorAll("table").forEach((table) => {
+    const hasRowspan = table.querySelector("td[rowspan]") !== null;
     const rows = table.querySelectorAll("tr");
     rows.forEach((row) => {
       const columns = row.querySelectorAll("td");
       if (
+        !hasRowspan &&
         columns.length > 1 &&
         !Array.from(columns).some((td) => td.hasAttribute("colspan"))
       ) {
@@ -76,7 +85,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("align", "center");
         if (isResponsive) {
           newTable.setAttribute("width", "100%");
-          newTable.setAttribute("style", "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;max-width:700px;");
+          newTable.setAttribute("style", "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;");
         } else {
           newTable.setAttribute("width", "700");
           newTable.setAttribute("style", "mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;");
@@ -85,22 +94,16 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         newTable.setAttribute("cellpadding", "0");
         newTable.setAttribute("cellspacing", "0");
         newTable.appendChild(row.cloneNode(true));
-        row.innerHTML = `<td style="font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly;"></td>`;
+        row.innerHTML = `<td valign="top" style="font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly;"></td>`;
         row.querySelector("td").appendChild(newTable);
       }
     });
   });
 
   html = parser.innerHTML;
-  html = html.replace(
-    /style="([^"]*?)(font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; )(.*?)(font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; )([^"]*?)"/g,
-    'style="$1$3$5"'
-  );
-  html = html.replace(
-    /style="([^"]*?)(font-size:0;line-height:0;padding:0;mso-line-height-rule:exactly; )([^"]*)"/g,
-    'style="$1$3"'
-  );
   html = html.replace(/ style=""/g, '');
+
+  html = html.replace(/<a\b(?![^>]*\bstyle=)/g, '<a style="border: 0; text-decoration: none;"');
 
   if (campaignMedium || campaignName) {
     html = html.replace(/<a([^>]*)href="([^"]*)"/g, (_match, p1, href) => {
@@ -109,7 +112,7 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
         const url = new URL(href, "https://example.com");
         if (campaignMedium) url.searchParams.set("utm_medium", campaignMedium);
         if (campaignName) url.searchParams.set("utm_campaign", campaignName);
-        const finalHref = url.toString().replace("https://example.com", "");
+        const finalHref = url.toString().replace(/^https:\/\/example\.com/, "");
         return `<a${p1}href="${finalHref}"`;
       } catch {
         return `<a${p1}href="${href}"`;
@@ -145,33 +148,19 @@ document.getElementById("copyBtn").addEventListener("click", () => {
 });
 
 // Tab toggle logic
-document.getElementById("tabCode").addEventListener("click", () => {
-  document.getElementById("codeView").classList.remove("hidden");
-  document.getElementById("previewView").classList.add("hidden");
-  document
-    .getElementById("tabCode")
-    .classList.add("text-accent", "border-accent", "border-b-2");
-  document.getElementById("tabCode").classList.remove("text-graymail");
-  document
-    .getElementById("tabPreview")
-    .classList.remove("text-accent", "border-accent", "border-b-2");
-  document.getElementById("tabPreview").classList.add("text-graymail");
-});
+function setActiveTab(activeTabId, inactiveTabId, showViewId, hideViewId) {
+  document.getElementById(showViewId).classList.remove("hidden");
+  document.getElementById(hideViewId).classList.add("hidden");
+  document.getElementById(activeTabId).classList.add("text-accent", "border-accent", "border-b-2");
+  document.getElementById(activeTabId).classList.remove("text-graymail");
+  document.getElementById(inactiveTabId).classList.remove("text-accent", "border-accent", "border-b-2");
+  document.getElementById(inactiveTabId).classList.add("text-graymail");
+}
 
-document.getElementById("tabPreview").addEventListener("click", () => {
-  document.getElementById("codeView").classList.add("hidden");
-  document.getElementById("previewView").classList.remove("hidden");
-  document
-    .getElementById("tabPreview")
-    .classList.add("text-accent", "border-accent", "border-b-2", "text-accent");
-  document.getElementById("tabPreview").classList.remove("text-graymail");
-  document
-    .getElementById("tabCode")
-    .classList.remove(
-      "text-accent",
-      "border-accent",
-      "border-b-2",
-      "text-accent"
-    );
-  document.getElementById("tabCode").classList.add("text-graymail");
-});
+document.getElementById("tabCode").addEventListener("click", () =>
+  setActiveTab("tabCode", "tabPreview", "codeView", "previewView")
+);
+
+document.getElementById("tabPreview").addEventListener("click", () =>
+  setActiveTab("tabPreview", "tabCode", "previewView", "codeView")
+);
