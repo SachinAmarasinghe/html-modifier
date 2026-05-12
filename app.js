@@ -34,12 +34,6 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
     return `<td${attrs} style="${tdStyle}">`;
   });
 
-  html = html.replace(/<td([^>]*)>/g, (match, attrs) => {
-    if (!/\bcolspan="/.test(attrs)) return match;
-    const styleMatch = /style="([^"]*)"/.exec(attrs);
-    return styleMatch ? `<td style="${styleMatch[1]}">` : '<td>';
-  });
-
   html = html.replace(/<td(?![^>]*valign)/g, '<td valign="top"');
 
   html = html.replace(/<img([^>]*)src="([^"]*)"/g, (_match, p1, src) => {
