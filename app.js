@@ -36,29 +36,54 @@ document.getElementById("modifyBtn").addEventListener("click", function () {
 
   html = html.replace(/<td(?![^>]*valign)/g, '<td valign="top"');
 
-  html = html.replace(/<img([^>]*)src="([^"]*)"/g, (_match, p1, src) => {
-    let newSrc = imageUrl && !src.startsWith('http') ? `${imageUrl.replace(/\/+$/, '')}/${src.replace(/^\/+/, '')}` : src;
-    let styleMatch = /style="([^"]*)"/.exec(p1);
+  html = html.replace(/<img([^>]*)>/g, (_match, attrs) => {
+    const srcMatch = /\bsrc="([^"]*)"/i.exec(attrs);
+    if (!srcMatch) return _match;
+    const src = srcMatch[1];
+    const newSrc = imageUrl && !src.startsWith('http')
+      ? `${imageUrl.replace(/\/+$/, '')}/${src.replace(/^\/+/, '')}`
+      : src;
+    const styleMatch = /\bstyle="([^"]*)"/i.exec(attrs);
     let newStyle = isResponsive
       ? "display:block;line-height:0;font-size:0;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;"
       : "display:block;line-height:0;font-size:0;max-width:100%;border:0;outline:none;text-decoration:none;";
-    if (styleMatch) {
-      newStyle += " " + styleMatch[1];
-      return `<img${p1.replace(styleMatch[0], "")} border="0" style="${newStyle}" src="${newSrc}"`;
+    if (styleMatch) newStyle += " " + styleMatch[1];
+    let cleanAttrs = attrs
+      .replace(/\bsrc="[^"]*"/i, '')
+      .replace(/\bstyle="[^"]*"/i, '')
+      .replace(/\bborder="[^"]*"/i, '');
+    if (isResponsive) {
+      cleanAttrs = cleanAttrs
+        .replace(/\bwidth="(\d+)"/i, (m, w) => parseInt(w) < 150 ? m : 'width="100%"')
+        .replace(/\bheight="[^"]*"/i, '');
     } else {
-      return `<img${p1} border="0" style="${newStyle}" src="${newSrc}"`;
+      const widthMatch = /\bwidth="(\d+)"/i.exec(cleanAttrs);
+      if (widthMatch && parseInt(widthMatch[1]) > 700) {
+        cleanAttrs = cleanAttrs
+          .replace(/\bwidth="(\d+)"/i, 'width="700"')
+          .replace(/\bheight="[^"]*"/i, '');
+      }
     }
+    cleanAttrs = cleanAttrs.replace(/\s+/g, ' ').trim();
+    return `<img${cleanAttrs ? ' ' + cleanAttrs : ''} border="0" style="${newStyle}" src="${newSrc}">`;
   });
 
-  if (isResponsive) {
-    html = html.replace(/<img([^>]*)width="(\d+)"/g, (match, p1, w) =>
-      parseInt(w) < 150 ? match : `<img${p1} width="100%"`
-    );
-    html = html.replace(/<img([^>]*)height="[^"]*"/g, '<img$1');
-  }
-
   if (description) {
-    const descRow = `<tr><td style="padding:0;font-size:0;line-height:0;mso-line-height-rule:exactly;"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;">${description}</div></td></tr>`;
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+    const firstTable = tempDiv.querySelector("table");
+    let maxCols = 1;
+    if (firstTable) {
+      firstTable.querySelectorAll("tr").forEach((tr) => {
+        let cols = 0;
+        tr.querySelectorAll("td").forEach((td) => {
+          cols += parseInt(td.getAttribute("colspan") || "1", 10);
+        });
+        if (cols > maxCols) maxCols = cols;
+      });
+    }
+    const colspanAttr = maxCols > 1 ? ` colspan="${maxCols}"` : "";
+    const descRow = `<tr><td${colspanAttr} style="padding:0;font-size:0;line-height:0;mso-line-height-rule:exactly;"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;">${description}</div></td></tr>`;
     html = html.replace(/(<table[^>]*>)/, `$1${descRow}`);
   }
 
